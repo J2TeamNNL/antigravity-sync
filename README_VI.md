@@ -1,6 +1,7 @@
-# Antigravity Sync
+# Antigravity Sync (Tiếng Việt)
 
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/antigravity-sync.antigravity-sync.svg)](https://marketplace.visualstudio.com/items?itemName=antigravity-sync.antigravity-sync)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/mrd9999.antigravity-sync.svg)](https://marketplace.visualstudio.com/items?itemName=mrd9999.antigravity-sync)
+[![Open VSX](https://img.shields.io/open-vsx/v/mrd9999/antigravity-sync)](https://open-vsx.org/extension/mrd9999/antigravity-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 VS Code Extension đồng bộ **Gemini Antigravity context** (`~/.gemini/antigravity/`) giữa các máy thông qua private Git repository.
@@ -8,6 +9,59 @@ VS Code Extension đồng bộ **Gemini Antigravity context** (`~/.gemini/antigr
 **Vấn đề:** Khi switch máy, toàn bộ conversation history, Knowledge Items và brain artifacts của Gemini Antigravity bị mất. Extension này sync tự động qua Git để giải quyết vấn đề đó.
 
 ![Antigravity Sync Panel](docs/images/panel-preview.png)
+
+---
+
+## ⚠️ QUAN TRỌNG: Cross-Machine Sync
+
+### Workspace Path Matching
+
+Antigravity lưu conversation history theo **đường dẫn tuyệt đối của workspace**. Để xem được conversation từ máy cũ trên máy mới, **đường dẫn workspace phải GIỐNG NHAU**.
+
+**Ví dụ:**
+- Máy A: `/Users/dung.leviet/Documents/myproject`
+- Máy B: **PHẢI là** `/Users/dung.leviet/Documents/myproject`
+
+Nếu đường dẫn khác nhau, conversation sẽ không hiển thị dù đã sync thành công.
+
+### Giải pháp: Symlink
+
+Tạo symlink trên máy mới để match đường dẫn máy cũ:
+
+```bash
+# Linux/macOS
+sudo mkdir -p /Users/dung.leviet/Documents
+sudo ln -s /actual/path/to/project /Users/dung.leviet/Documents/myproject
+
+# Windows (Run as Administrator)
+mklink /D "C:\Users\dung.leviet\Documents\myproject" "D:\actual\path\to\project"
+```
+
+### Reload Window Sau Khi Sync
+
+Sau khi Pull data từ remote, bạn **PHẢI reload VS Code window** để Antigravity load conversation mới:
+
+```
+Cmd+Shift+P (macOS) / Ctrl+Shift+P (Windows/Linux)
+→ "Developer: Reload Window"
+```
+
+### OS Compatibility
+
+| Sync giữa | Hoạt động? | Ghi chú |
+|-----------|------------|---------|
+| macOS ↔ macOS | ✅ | Dùng symlink |
+| Linux ↔ Linux | ✅ | Dùng symlink |
+| Windows ↔ Windows | ✅ | Dùng `mklink /D` (Admin) |
+| macOS ↔ Linux | ✅ | Dùng symlink |
+| macOS/Linux ↔ Windows WSL | ✅ | Symlink trong WSL + VS Code Remote |
+| **macOS/Linux ↔ Windows native** | ❌ | **Path format không tương thích** |
+
+> **Lưu ý:** 
+> - `knowledge/` và `brain/` hoạt động trên tất cả platforms mà không cần symlink
+> - Chỉ `conversations/` cần workspace path matching
+
+---
 
 ## Features
 
@@ -20,17 +74,29 @@ VS Code Extension đồng bộ **Gemini Antigravity context** (`~/.gemini/antigr
 
 ## Installation
 
-### Từ VS Code Marketplace
+### Từ Marketplace
 
-1. Mở VS Code
-2. Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
-3. Search "Antigravity Sync"
-4. Install
+**VS Code Marketplace:**
+https://marketplace.visualstudio.com/items?itemName=mrd9999.antigravity-sync
+
+**Open VSX (cho Cursor, VSCodium):**
+https://open-vsx.org/extension/mrd9999/antigravity-sync
+
+### Từ VS Code/Antigravity
+
+1. Mở Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
+2. Search "Antigravity Sync"
+3. Install
 
 ### Từ VSIX
 
 ```bash
-code --install-extension antigravity-sync-0.1.0.vsix
+# Nếu agy đã có trong PATH:
+agy --install-extension antigravity-sync-0.1.1.vsix
+
+# Nếu agy CHƯA có trong PATH, add trước:
+# Cmd+Shift+P → "Shell Command: Install 'agy' command in PATH"
+# Sau đó chạy lệnh install ở trên
 ```
 
 ## Quick Start
@@ -91,47 +157,6 @@ Custom patterns có thể add trong `.antigravityignore` tại `.gemini/antigrav
 - Sensitive files auto-excluded
 - HTTPS only
 
-## Cross-Machine Sync
-
-Sau khi sync sang máy mới, Gemini cần matching workspace paths để recognize conversations.
-
-### Step 1: Pull synced data
-Install extension, connect cùng repo, **Pull** để get all data.
-
-### Step 2: Create symlinks cho workspace paths
-Gemini bind conversations với workspace paths. Tạo symlinks trên máy mới:
-
-```bash
-# Example: Máy cũ có workspace tại /Users/dung.leviet/Documents/core
-# Trên máy mới (Linux/Mac):
-sudo mkdir -p /Users/dung.leviet/Documents
-sudo ln -s /actual/path/to/project /Users/dung.leviet/Documents/core
-
-# Windows (Run as Admin):
-mklink /D "C:\Users\dung.leviet\Documents\core" "D:\actual\path\to\project"
-```
-
-### Cross-machine compatibility:
-
-| Folder | Compatibility |
-|--------|---------------|
-| `knowledge/` | ✅ Works ngay (global) |
-| `brain/` | ✅ Artifacts readable |
-| `conversations/` | ⚠️ Cần symlink match paths |
-
-### OS Compatibility (cho conversations):
-
-| Sync between | Works? | Notes |
-|--------------|--------|-------|
-| macOS ↔ macOS | ✅ | symlink |
-| Linux ↔ Linux | ✅ | symlink |
-| Windows ↔ Windows | ✅ | `mklink /D` (Admin) |
-| macOS ↔ Linux | ✅ | symlink |
-| macOS/Linux ↔ Windows WSL | ✅ | symlink in WSL + VS Code Remote |
-| macOS/Linux ↔ Windows native | ❌ | Path format incompatible |
-
-> **Note:** Knowledge Items work trên all platforms không cần symlinks.
-
 ## Development
 
 ```bash
@@ -142,7 +167,7 @@ yarn build
 yarn test
 
 # Run extension (dev mode)
-code . && press F5
+agy . && press F5
 ```
 
 ## Contributing
