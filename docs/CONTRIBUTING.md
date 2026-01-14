@@ -27,8 +27,8 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 ### Finding Issues
 
-- Look for issues labeled [`good first issue`](https://github.com/AntisyncOrg/antigravity-sync/labels/good%20first%20issue)
-- Check [`help wanted`](https://github.com/AntisyncOrg/antigravity-sync/labels/help%20wanted) for more challenging tasks
+- Look for issues labeled [`good first issue`](https://github.com/mrd9999/antigravity-sync/labels/good%20first%20issue)
+- Check [`help wanted`](https://github.com/mrd9999/antigravity-sync/labels/help%20wanted) for more challenging tasks
 
 ## Development Setup
 
@@ -169,7 +169,7 @@ yarn test:e2e
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/AntisyncOrg/antigravity-sync/discussions)
-- Check existing [Issues](https://github.com/AntisyncOrg/antigravity-sync/issues)
+- Open a [Discussion](https://github.com/mrd9999/antigravity-sync/discussions)
+- Check existing [Issues](https://github.com/mrd9999/antigravity-sync/issues)
 
 Thank you for contributing! 🙏

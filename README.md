@@ -1,6 +1,5 @@
 # Antigravity Sync
 
-[![CI](https://github.com/AntisyncOrg/antigravity-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/AntisyncOrg/antigravity-sync/actions)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/antigravity-sync.antigravity-sync.svg)](https://marketplace.visualstudio.com/items?itemName=antigravity-sync.antigravity-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -135,7 +134,7 @@ See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for local development setup.
 
 ```bash
 # Clone the repo
-git clone https://github.com/AntisyncOrg/antigravity-sync.git
+git clone https://github.com/mrd9999/antigravity-sync.git
 cd antigravity-sync
 
 # Install dependencies
@@ -155,14 +154,19 @@ code . && press F5
 
 Contributions are welcome! Please read our [Contributing Guide](docs/CONTRIBUTING.md) first.
 
-- 🐛 [Report bugs](https://github.com/AntisyncOrg/antigravity-sync/issues/new?template=bug_report.md)
-- 💡 [Request features](https://github.com/AntisyncOrg/antigravity-sync/issues/new?template=feature_request.md)
-- 📖 [Improve docs](https://github.com/AntisyncOrg/antigravity-sync/pulls)
+- 🐛 [Report bugs](https://github.com/mrd9999/antigravity-sync/issues/new?template=bug_report.md)
+- 💡 [Request features](https://github.com/mrd9999/antigravity-sync/issues/new?template=feature_request.md)
+- 📖 [Improve docs](https://github.com/mrd9999/antigravity-sync/pulls)
 
 ## 📄 License
 
-MIT © [Antigravity Sync Contributors](LICENSE)
+MIT © [Dung Le](https://www.facebook.com/mrd.900s)
 
 ---
 
 Made with ❤️ for the Gemini community
+
+## 📬 Contact
+
+- Facebook: [@mrd.900s](https://www.facebook.com/mrd.900s)
+- GitHub Issues: [Report a bug](https://github.com/mrd9999/antigravity-sync/issues)

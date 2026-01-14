@@ -51,6 +51,9 @@ export class MainPanel {
               <span class="status-text" id="status-text">Synced</span>
               <span class="status-time" id="last-sync-time">Just now</span>
             </div>
+            <div class="sync-countdown" id="sync-countdown" title="Auto-sync countdown">
+              <span id="countdown-value">--:--</span>
+            </div>
             <vscode-button appearance="icon" id="btn-sync-icon" title="Sync now">
               <span class="codicon codicon-sync"></span>
             </vscode-button>
@@ -452,6 +455,19 @@ export function setRefreshLoading(loading: boolean): void {
       refreshIcon.classList.add('codicon-modifier-spin');
     } else {
       refreshIcon.classList.remove('codicon-modifier-spin');
+    }
+  }
+}
+
+export function updateCountdown(seconds: number): void {
+  const countdownEl = document.getElementById('countdown-value');
+  if (countdownEl) {
+    if (seconds <= 0) {
+      countdownEl.textContent = '--:--';
+    } else {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      countdownEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
     }
   }
 }

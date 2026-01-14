@@ -180,6 +180,17 @@ vscode-button.full-width::part(content) {
   color: var(--vscode-descriptionForeground);
 }
 
+.sync-countdown {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--vscode-input-background);
+  border-radius: var(--radius-sm);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
 /* Quick Actions */
 .quick-actions {
   display: grid;

@@ -73,6 +73,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
           vscode.env.openExternal(vscode.Uri.parse(message.url));
           break;
         case 'getGitStatus':
+          // Just refresh status (git fetch + check) - no file copy needed
           await this.sendGitStatus();
           break;
       }
@@ -101,6 +102,17 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
 
     if (isConfigured) {
       await this.updateStatus();
+
+      // Start auto-sync timer if not already running
+      this._syncService.setCountdownCallback((seconds) => {
+        if (this._view) {
+          this._view.webview.postMessage({
+            type: 'countdown',
+            data: { seconds }
+          });
+        }
+      });
+      this._syncService.startAutoSync();
     }
   }
 
@@ -154,6 +166,17 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       await this._syncService.initialize();
 
       this.sendLog('Connected successfully!', 'success');
+
+      // Setup auto-sync timer with countdown callback
+      this._syncService.setCountdownCallback((seconds) => {
+        if (this._view) {
+          this._view.webview.postMessage({
+            type: 'countdown',
+            data: { seconds }
+          });
+        }
+      });
+      this._syncService.startAutoSync();
 
       // Update webview and check git status
       await this.sendConfigState();

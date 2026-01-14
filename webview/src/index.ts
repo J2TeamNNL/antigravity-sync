@@ -17,7 +17,7 @@ provideVSCodeDesignSystem().register(
   vsCodeTextField()
 );
 
-import { MainPanel, showConfigured, updateStatus, showError, showConfigError, appendLog, clearLog, updateGitStatus, setRefreshLoading } from './panels/MainPanel';
+import { MainPanel, showConfigured, updateStatus, showError, showConfigError, appendLog, clearLog, updateGitStatus, setRefreshLoading, updateCountdown } from './panels/MainPanel';
 
 // Declare vscode API type
 interface VsCodeApi {
@@ -76,7 +76,12 @@ interface GitStatusMessage {
   data: { ahead: number; behind: number; files: string[]; totalFiles: number; syncRepoPath: string };
 }
 
-type ExtensionMessage = ConfiguredMessage | StatusMessage | ErrorMessage | ConfigErrorMessage | LogMessage | ClearLogMessage | GitStatusMessage;
+interface CountdownMessage {
+  type: 'countdown';
+  data: { seconds: number };
+}
+
+type ExtensionMessage = ConfiguredMessage | StatusMessage | ErrorMessage | ConfigErrorMessage | LogMessage | ClearLogMessage | GitStatusMessage | CountdownMessage;
 
 window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
   const message = event.data;
@@ -102,6 +107,9 @@ window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
       break;
     case 'gitStatus':
       updateGitStatus(message.data);
+      break;
+    case 'countdown':
+      updateCountdown(message.data.seconds);
       break;
   }
 });

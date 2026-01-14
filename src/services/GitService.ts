@@ -150,6 +150,13 @@ export class GitService {
   }
 
   /**
+   * Fetch from remote (to update tracking info)
+   */
+  async fetch(): Promise<void> {
+    await this.git.fetch('origin');
+  }
+
+  /**
    * Pull from remote (handles divergent branches with rebase)
    */
   async pull(): Promise<void> {
@@ -180,7 +187,10 @@ export class GitService {
         // Divergent branches or rebase conflict - use "remote wins" strategy
         if (gitError.message?.includes('divergent') ||
           gitError.message?.includes('reconcile') ||
-          gitError.message?.includes('CONFLICT')) {
+          gitError.message?.includes('CONFLICT') ||
+          gitError.message?.includes('conflict') ||
+          gitError.message?.includes('Exiting') ||
+          gitError.message?.includes('unresolved')) {
           await this.git.rebase({ '--abort': null }).catch(() => { });
           await this.git.fetch('origin');
           await this.git.reset(['--hard', 'origin/main']);

@@ -17,6 +17,9 @@ export interface SyncStatus {
   repository: string | null;
 }
 
+// Default auto-sync interval: 5 minutes
+const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+
 export class SyncService {
   private context: vscode.ExtensionContext;
   private configService: ConfigService;
@@ -24,6 +27,12 @@ export class SyncService {
   private gitService: GitService | null = null;
   private filterService: FilterService | null = null;
   private isSyncing = false;
+
+  // Auto-sync timer
+  private autoSyncTimer: NodeJS.Timeout | null = null;
+  private nextSyncTime: number = 0;
+  private countdownCallback: ((seconds: number) => void) | null = null;
+  private countdownInterval: NodeJS.Timeout | null = null;
 
   constructor(
     context: vscode.ExtensionContext,
@@ -164,6 +173,16 @@ export class SyncService {
   }
 
   /**
+   * Copy files only (for refresh status without push)
+   */
+  async copyFilesOnly(): Promise<void> {
+    if (!this.filterService) {
+      return;
+    }
+    await this.copyFilesToSyncRepo();
+  }
+
+  /**
    * Get detailed git status for UI
    */
   async getDetailedStatus(): Promise<{
@@ -174,6 +193,13 @@ export class SyncService {
   }> {
     if (!this.gitService) {
       return { ahead: 0, behind: 0, files: [], totalFiles: 0 };
+    }
+
+    // Fetch from remote first to get accurate behind count
+    try {
+      await this.gitService.fetch();
+    } catch {
+      // Ignore fetch errors (offline, etc.)
     }
 
     const aheadBehind = await this.gitService.getAheadBehind();
@@ -252,7 +278,6 @@ export class SyncService {
 
       if (entry.isDirectory()) {
         if (!fs.existsSync(destPath)) {
-          fs.mkdirSync(destPath, { recursive: true });
         }
         await this.copyDirectoryContents(sourcePath, destPath, excludeDirs);
       } else {
@@ -263,5 +288,65 @@ export class SyncService {
         fs.copyFileSync(sourcePath, destPath);
       }
     }
+  }
+
+  /**
+   * Set callback for countdown updates
+   */
+  setCountdownCallback(callback: (seconds: number) => void): void {
+    this.countdownCallback = callback;
+  }
+
+  /**
+   * Start auto-sync timer
+   */
+  startAutoSync(): void {
+    this.stopAutoSync(); // Clear any existing timer
+
+    this.nextSyncTime = Date.now() + AUTO_SYNC_INTERVAL_MS;
+
+    // Start countdown interval (every second)
+    this.countdownInterval = setInterval(() => {
+      const secondsLeft = Math.max(0, Math.ceil((this.nextSyncTime - Date.now()) / 1000));
+      if (this.countdownCallback) {
+        this.countdownCallback(secondsLeft);
+      }
+    }, 1000);
+
+    // Start sync timer
+    this.autoSyncTimer = setInterval(async () => {
+      try {
+        await this.sync();
+        this.nextSyncTime = Date.now() + AUTO_SYNC_INTERVAL_MS;
+      } catch (error) {
+        console.error('Auto-sync failed:', error);
+      }
+    }, AUTO_SYNC_INTERVAL_MS);
+  }
+
+  /**
+   * Stop auto-sync timer
+   */
+  stopAutoSync(): void {
+    if (this.autoSyncTimer) {
+      clearInterval(this.autoSyncTimer);
+      this.autoSyncTimer = null;
+    }
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+    this.nextSyncTime = 0;
+    if (this.countdownCallback) {
+      this.countdownCallback(0);
+    }
+  }
+
+  /**
+   * Get next sync time in seconds
+   */
+  getSecondsUntilNextSync(): number {
+    if (!this.nextSyncTime) return 0;
+    return Math.max(0, Math.ceil((this.nextSyncTime - Date.now()) / 1000));
   }
 }
