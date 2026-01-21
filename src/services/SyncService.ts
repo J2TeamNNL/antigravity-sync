@@ -26,6 +26,9 @@ function ts(): string {
 // Default auto-sync interval: 5 minutes
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
+// Lock file settings - prevent multiple VS Code windows from syncing simultaneously
+const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes - stale lock timeout
+
 export class SyncService {
   private context: vscode.ExtensionContext;
   private configService: ConfigService;
@@ -81,35 +84,101 @@ export class SyncService {
   }
 
   /**
+   * Get lock file path
+   */
+  private getLockFilePath(): string {
+    return path.join(this.configService.getSyncRepoPath(), '.sync.lock');
+  }
+
+  /**
+   * Acquire sync lock - prevents multiple VS Code windows from syncing simultaneously
+   * Uses atomic file creation with timeout for stale locks
+   */
+  private acquireLock(): boolean {
+    const lockFile = this.getLockFilePath();
+
+    // Check for existing lock
+    if (fs.existsSync(lockFile)) {
+      try {
+        const lockTime = parseInt(fs.readFileSync(lockFile, 'utf-8'));
+        if (Date.now() - lockTime > LOCK_TIMEOUT_MS) {
+          // Lock is stale (> 5 min), remove it
+          console.log(ts() + ' [SyncService] Stale lock detected, removing...');
+          fs.unlinkSync(lockFile);
+        } else {
+          // Lock is still valid
+          console.log(ts() + ' [SyncService] Another sync in progress, skipping...');
+          return false;
+        }
+      } catch {
+        // Error reading lock, try to remove it
+        fs.unlinkSync(lockFile);
+      }
+    }
+
+    // Try to create lock atomically
+    try {
+      fs.writeFileSync(lockFile, Date.now().toString(), { flag: 'wx' });
+      console.log(ts() + ' [SyncService] Lock acquired');
+      return true;
+    } catch {
+      // Another process got the lock first
+      console.log(ts() + ' [SyncService] Failed to acquire lock, another sync started');
+      return false;
+    }
+  }
+
+  /**
+   * Release sync lock
+   */
+  private releaseLock(): void {
+    const lockFile = this.getLockFilePath();
+    try {
+      if (fs.existsSync(lockFile)) {
+        fs.unlinkSync(lockFile);
+        console.log(ts() + ' [SyncService] Lock released');
+      }
+    } catch {
+      // Ignore errors when releasing lock
+    }
+  }
+
+  /**
    * Full sync (push + pull)
    */
   async sync(): Promise<void> {
     if (this.isSyncing) {
-      console.log('[SyncService.sync] Already syncing, skipping...');
+      console.log(ts() + ' [SyncService.sync] Already syncing in this window, skipping...');
+      return;
+    }
+
+    // Try to acquire cross-window lock
+    if (!this.acquireLock()) {
       return;
     }
 
     this.isSyncing = true;
     this.statusBar.update(SyncState.Syncing);
-    console.log('[SyncService.sync] === SYNC STARTED ===');
+    console.log(ts() + ' [SyncService.sync] === SYNC STARTED ===');
 
     try {
       // Pull remote changes first
-      console.log('[SyncService.sync] Step 1: Pulling remote changes...');
+      console.log(ts() + ' [SyncService.sync] Step 1: Pulling remote changes...');
       await this.pull();
 
       // Push local changes (no need to pull again, already done)
-      console.log('[SyncService.sync] Step 2: Pushing local changes...');
+      console.log(ts() + ' [SyncService.sync] Step 2: Pushing local changes...');
       await this.pushWithoutPull();
 
-      console.log('[SyncService.sync] === SYNC COMPLETE ===');
+      console.log(ts() + ' [SyncService.sync] === SYNC COMPLETE ===');
       this.statusBar.update(SyncState.Synced);
     } catch (error) {
-      console.log(`[SyncService.sync] Sync failed: ${(error as Error).message}`);
+      console.log(ts() + ` [SyncService.sync] Sync failed: ${(error as Error).message}`);
       this.statusBar.update(SyncState.Error);
       throw error;
     } finally {
       this.isSyncing = false;
+      this.releaseLock();
     }
   }
 

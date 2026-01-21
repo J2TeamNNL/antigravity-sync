@@ -287,7 +287,8 @@ export class GitService {
         // Pull remote content (will merge with existing files)
         try {
           await this.git.fetch('origin');
-          await this.git.reset(['--hard', 'origin/main']);
+          // Checkout remote branch without destroying local files
+          await this.git.checkout(['origin/main', '-B', 'main']);
         } catch {
           // Remote might be empty, that's OK
         }
@@ -472,9 +473,9 @@ export class GitService {
       this.log(`[SmartSync] Stash pop result: ${stashPopResult}`);
     }
 
-    // Step 3: Hard reset to clear ANY corrupt index state
-    this.log('[SmartSync] Step 3: Hard resetting to HEAD...');
-    await this.git.reset(['--hard', 'HEAD']).catch(e => this.log(`[SmartSync] Reset failed: ${e.message}`));
+    // Step 3: Soft reset to unstage but KEEP working directory files
+    this.log('[SmartSync] Step 3: Soft resetting to HEAD (keeping local files)...');
+    await this.git.reset(['HEAD']).catch(e => this.log(`[SmartSync] Reset failed: ${e.message}`));
 
     // Step 4: Fetch latest remote
     this.log('[SmartSync] Step 4: Fetching origin...');
@@ -556,9 +557,14 @@ export class GitService {
     const commitResult = await this.git.commit('Sync: smart merge (larger/newer wins)').catch(e => `commit failed: ${e.message}`);
     this.log(`[SmartSync] Commit result: ${JSON.stringify(commitResult)}`);
 
-    // Step 9: Force push to resolve divergence
-    this.log('[SmartSync] Step 9: Force pushing...');
-    const pushResult = await this.git.push('origin', 'main', ['--force']).catch(e => `push failed: ${e.message}`);
+    // Step 9: Push (no force - safer, will fail if diverged)
+    this.log('[SmartSync] Step 9: Pushing...');
+    const pushResult = await this.git.push('origin', 'main').catch(async (e) => {
+      this.log(`[SmartSync] Push failed, trying pull then push: ${e.message}`);
+      // If push fails, pull and retry
+      await this.git.pull('origin', 'main', { '--rebase': 'false' }).catch(() => { });
+      return await this.git.push('origin', 'main').catch(e2 => `push retry failed: ${e2.message}`);
+    });
     this.log(`[SmartSync] Push result: ${JSON.stringify(pushResult)}`);
 
     this.log('[SmartSync] === SMART MERGE COMPLETE ===');
