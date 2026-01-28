@@ -1,20 +1,20 @@
 {
   "name": "antigravity-sync",
   "displayName": "Antigravity Auto Retry/Sync",
-  "description": "Auto-sync AI context + Auto-accept/retry for AI coding agents. Zero-babysitting automation.",
-  "version": "0.3.3",
-  "publisher": "mrd9999",
-  "author": "Dung Le <https://www.facebook.com/mrd.900s>",
+  "description": "Auto-sync AI context + Auto-accept/retry for AI coding agents.",
+  "version": "1.0.0",
+  "publisher": "j2teamnnl",
+  "author": "Nguyen Nam Long <https://www.facebook.com/j2teamnnl>",
   "icon": "resources/icons/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mrd9999/antigravity-sync"
+    "url": "https://github.com/j2teamnnl/antigravity-sync"
   },
   "bugs": {
-    "url": "https://github.com/mrd9999/antigravity-sync/issues"
+    "url": "https://github.com/j2teamnnl/antigravity-sync/issues"
   },
-  "homepage": "https://github.com/mrd9999/antigravity-sync#readme",
+  "homepage": "https://github.com/j2teamnnl/antigravity-sync#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -29,9 +29,7 @@
     "auto retry",
     "cursor auto retry",
     "vscode auto retry",
-    "ai agent automation",
-    "zero babysitting",
-    "cdp automation"
+    "ai agent automation"
   ],
   "activationEvents": [
     "onStartupFinished"

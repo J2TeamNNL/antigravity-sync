@@ -1,15 +1,15 @@
 /**
  * SidePanelProvider - WebviewViewProvider for the side panel
  */
-import * as vscode from 'vscode';
-import { SyncService } from '../services/SyncService';
-import { ConfigService } from '../services/ConfigService';
-import { NotificationService } from '../services/NotificationService';
-import { GitService } from '../services/GitService';
-import { AutoRetryService } from '../services/AutoRetryService';
+import * as vscode from "vscode";
+import { SyncService } from "../services/SyncService";
+import { ConfigService } from "../services/ConfigService";
+import { NotificationService } from "../services/NotificationService";
+import { GitService } from "../services/GitService";
+import { AutoRetryService } from "../services/AutoRetryService";
 
 export class SidePanelProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'antigravitySync.mainPanel';
+  public static readonly viewType = "antigravitySync.mainPanel";
 
   private _view?: vscode.WebviewView;
   private readonly _extensionUri: vscode.Uri;
@@ -20,7 +20,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   constructor(
     extensionUri: vscode.Uri,
     syncService: SyncService,
-    configService: ConfigService
+    configService: ConfigService,
   ) {
     this._extensionUri = extensionUri;
     this._syncService = syncService;
@@ -31,16 +31,16 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): void | Thenable<void> {
     this._view = webviewView;
 
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview'),
-        vscode.Uri.joinPath(this._extensionUri, 'webview', 'media')
-      ]
+        vscode.Uri.joinPath(this._extensionUri, "dist", "webview"),
+        vscode.Uri.joinPath(this._extensionUri, "webview", "media"),
+      ],
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
@@ -48,47 +48,47 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     // Handle messages from webview
     webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message.type) {
-        case 'checkConfig':
+        case "checkConfig":
           await this.sendConfigState();
           break;
-        case 'saveConfig':
+        case "saveConfig":
           await this.handleSaveConfig(message.repoUrl, message.pat);
           break;
-        case 'syncNow':
+        case "syncNow":
           await this.handleSync();
           break;
-        case 'push':
+        case "push":
           await this.handlePush();
           break;
-        case 'pull':
+        case "pull":
           await this.handlePull();
           break;
-        case 'disconnect':
+        case "disconnect":
           await this.handleDisconnect();
           break;
-        case 'toggleFolder':
+        case "toggleFolder":
           await this.handleFolderToggle(message.folder, message.enabled);
           break;
-        case 'toggleSyncEnabled':
+        case "toggleSyncEnabled":
           await this.handleToggleSyncEnabled(message.enabled);
           break;
-        case 'openExternal':
+        case "openExternal":
           vscode.env.openExternal(vscode.Uri.parse(message.url));
           break;
-        case 'getGitStatus':
+        case "getGitStatus":
           // Just refresh status (git fetch + check) - no file copy needed
           await this.sendGitStatus();
           break;
-        case 'startAutoRetry':
+        case "startAutoRetry":
           await this.handleStartAutoRetry();
           break;
-        case 'stopAutoRetry':
+        case "stopAutoRetry":
           await this.handleStopAutoRetry();
           break;
-        case 'setAutoStart':
+        case "setAutoStart":
           await this.handleSetAutoStart(message.data?.enabled ?? false);
           break;
-        case 'getAutoRetryStatus':
+        case "getAutoRetryStatus":
           this.sendAutoRetryStatus();
           this.sendAutoStartSetting();
           break;
@@ -104,16 +104,16 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
 
     const isConfigured = await this._configService.isConfigured();
     const config = this._configService.getConfig();
-    const vsConfig = vscode.workspace.getConfiguration('antigravitySync');
-    const syncFolders = vsConfig.get<string[]>('syncFolders', ['knowledge']);
+    const vsConfig = vscode.workspace.getConfiguration("antigravitySync");
+    const syncFolders = vsConfig.get<string[]>("syncFolders", ["knowledge"]);
 
     this._view.webview.postMessage({
-      type: 'configured',
+      type: "configured",
       data: {
         configured: isConfigured,
         repoUrl: config.repositoryUrl,
-        syncFolders: syncFolders
-      }
+        syncFolders: syncFolders,
+      },
     });
 
     if (isConfigured) {
@@ -126,8 +126,8 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       this._syncService.setCountdownCallback((seconds) => {
         if (this._view) {
           this._view.webview.postMessage({
-            type: 'countdown',
-            data: { seconds }
+            type: "countdown",
+            data: { seconds },
           });
         }
       });
@@ -143,59 +143,63 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
 
     if (!repoUrl || !pat) {
       this._view.webview.postMessage({
-        type: 'configError',
-        data: { message: 'Please fill in both fields' }
+        type: "configError",
+        data: { message: "Please fill in both fields" },
       });
       return;
     }
 
     try {
-      this.sendLog('Connecting...', 'info');
+      this.sendLog("Connecting...", "info");
 
       // Validate URL is a Git repository URL
-      this.sendLog('Validating repository URL...', 'info');
+      this.sendLog("Validating repository URL...", "info");
       const validationResult = this.validateGitRepoUrl(repoUrl);
       if (!validationResult.valid) {
         throw new Error(validationResult.error);
       }
 
       if (pat.length < 5) {
-        throw new Error('Access token appears too short');
+        throw new Error("Access token appears too short");
       }
 
       // CRITICAL: Check if repo is PUBLIC (reject if accessible without auth)
-      this.sendLog('Checking repository privacy...', 'info');
+      this.sendLog("Checking repository privacy...", "info");
       const isPublic = await this.checkIsPublicRepo(repoUrl);
       if (isPublic) {
-        throw new Error('Repository is PUBLIC! Your data may contain sensitive info. Please use a PRIVATE repository.');
+        throw new Error(
+          "Repository is PUBLIC! Your data may contain sensitive info. Please use a PRIVATE repository.",
+        );
       }
 
       // Verify token has access to the repository FIRST (before saving)
-      this.sendLog('Verifying access token...', 'info');
-      const tempGitService = new GitService(this._configService.getSyncRepoPath());
+      this.sendLog("Verifying access token...", "info");
+      const tempGitService = new GitService(
+        this._configService.getSyncRepoPath(),
+      );
       await tempGitService.verifyAccess(repoUrl, pat);
 
       // Save URL first (credentials storage depends on URL)
-      this.sendLog('Saving credentials to Git credential manager...', 'info');
+      this.sendLog("Saving credentials to Git credential manager...", "info");
       await this._configService.setRepositoryUrl(repoUrl);
       // Now save credentials (uses Git credential manager - persists across workspaces)
       await this._configService.saveCredentials(pat);
 
       // Initialize sync
-      this.sendLog('Initializing Git repository...', 'info');
+      this.sendLog("Initializing Git repository...", "info");
       await this._syncService.initialize();
 
       // Wire git logger to UI panel
       this._syncService.setGitLogger((msg, type) => this.sendLog(msg, type));
 
-      this.sendLog('Connected successfully!', 'success');
+      this.sendLog("Connected successfully!", "success");
 
       // Setup auto-sync timer with countdown callback
       this._syncService.setCountdownCallback((seconds) => {
         if (this._view) {
           this._view.webview.postMessage({
-            type: 'countdown',
-            data: { seconds }
+            type: "countdown",
+            data: { seconds },
           });
         }
       });
@@ -204,13 +208,13 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       // Update webview and check git status
       await this.sendConfigState();
       await this.sendGitStatus();
-
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Configuration failed';
-      this.sendLog(`Connect failed: ${message}`, 'error');
+      const message =
+        error instanceof Error ? error.message : "Configuration failed";
+      this.sendLog(`Connect failed: ${message}`, "error");
       this._view.webview.postMessage({
-        type: 'configError',
-        data: { message }
+        type: "configError",
+        data: { message },
       });
     }
   }
@@ -220,31 +224,36 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    */
   private validateGitRepoUrl(url: string): { valid: boolean; error?: string } {
     // Must start with valid protocol
-    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('git@')) {
-      return { valid: false, error: 'Invalid URL. Use https://... or git@...' };
+    if (
+      !url.startsWith("http://") &&
+      !url.startsWith("https://") &&
+      !url.startsWith("git@")
+    ) {
+      return { valid: false, error: "Invalid URL. Use https://... or git@..." };
     }
 
     // Known Git providers
     const gitProviders = [
-      'github.com',
-      'gitlab.com',
-      'bitbucket.org',
-      'gitee.com',
-      'codeberg.org',
-      'sr.ht',
-      'dev.azure.com'
+      "github.com",
+      "gitlab.com",
+      "bitbucket.org",
+      "gitee.com",
+      "codeberg.org",
+      "sr.ht",
+      "dev.azure.com",
     ];
 
     // Check if URL contains a known provider OR has .git extension OR has typical repo path
     const urlLower = url.toLowerCase();
-    const isKnownProvider = gitProviders.some(p => urlLower.includes(p));
-    const hasGitExtension = urlLower.endsWith('.git');
+    const isKnownProvider = gitProviders.some((p) => urlLower.includes(p));
+    const hasGitExtension = urlLower.endsWith(".git");
     const hasRepoPath = /\/([\w.-]+)\/([\w.-]+)(\.git)?$/.test(url);
 
     if (!isKnownProvider && !hasGitExtension && !hasRepoPath) {
       return {
         valid: false,
-        error: 'URL does not look like a Git repository. Expected format: https://host/user/repo or git@host:user/repo.git'
+        error:
+          "URL does not look like a Git repository. Expected format: https://host/user/repo or git@host:user/repo.git",
       };
     }
 
@@ -256,8 +265,8 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * If accessible without auth = PUBLIC = reject
    */
   private async checkIsPublicRepo(url: string): Promise<boolean> {
-    const { exec } = require('child_process');
-    const { promisify } = require('util');
+    const { exec } = require("child_process");
+    const { promisify } = require("util");
     const execAsync = promisify(exec);
 
     try {
@@ -267,12 +276,12 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         timeout: 10000,
         env: {
           ...process.env,
-          GIT_ASKPASS: 'echo',           // Disable GUI prompts
-          GIT_TERMINAL_PROMPT: '0',      // Disable terminal prompts
-          GIT_SSH_COMMAND: 'ssh -o BatchMode=yes',  // Disable SSH prompts
-          GIT_CONFIG_NOSYSTEM: '1',      // Ignore system git config
-          HOME: '/nonexistent'           // Ignore user's credential helpers
-        }
+          GIT_ASKPASS: "echo", // Disable GUI prompts
+          GIT_TERMINAL_PROMPT: "0", // Disable terminal prompts
+          GIT_SSH_COMMAND: "ssh -o BatchMode=yes", // Disable SSH prompts
+          GIT_CONFIG_NOSYSTEM: "1", // Ignore system git config
+          HOME: "/nonexistent", // Ignore user's credential helpers
+        },
       });
       return true; // Accessible without auth = PUBLIC
     } catch {
@@ -284,17 +293,17 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Handle sync action
    */
   private async handleSync(): Promise<void> {
-    this.updateStatus('syncing');
-    this.sendLog('Syncing...', 'info');
+    this.updateStatus("syncing");
+    this.sendLog("Syncing...", "info");
     try {
       await this._syncService.sync();
-      this.updateStatus('synced');
-      this.sendLog('Sync complete', 'success');
+      this.updateStatus("synced");
+      this.sendLog("Sync complete", "success");
       await this.sendGitStatus();
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.updateStatus('error');
-      this.sendLog(`Sync failed: ${errorMsg}`, 'error');
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      this.updateStatus("error");
+      this.sendLog(`Sync failed: ${errorMsg}`, "error");
       NotificationService.handleSyncError(error as Error);
     }
   }
@@ -303,17 +312,17 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Handle push action
    */
   private async handlePush(): Promise<void> {
-    this.updateStatus('syncing');
-    this.sendLog('Pushing...', 'info');
+    this.updateStatus("syncing");
+    this.sendLog("Pushing...", "info");
     try {
       await this._syncService.push();
-      this.updateStatus('synced');
-      this.sendLog('Push complete', 'success');
+      this.updateStatus("synced");
+      this.sendLog("Push complete", "success");
       await this.sendGitStatus();
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.updateStatus('error');
-      this.sendLog(`Push failed: ${errorMsg}`, 'error');
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      this.updateStatus("error");
+      this.sendLog(`Push failed: ${errorMsg}`, "error");
       NotificationService.handleSyncError(error as Error);
     }
   }
@@ -322,17 +331,17 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Handle pull action
    */
   private async handlePull(): Promise<void> {
-    this.updateStatus('syncing');
-    this.sendLog('Pulling...', 'info');
+    this.updateStatus("syncing");
+    this.sendLog("Pulling...", "info");
     try {
       await this._syncService.pull();
-      this.updateStatus('synced');
-      this.sendLog('Pull complete', 'success');
+      this.updateStatus("synced");
+      this.sendLog("Pull complete", "success");
       await this.sendGitStatus();
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.updateStatus('error');
-      this.sendLog(`Pull failed: ${errorMsg}`, 'error');
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      this.updateStatus("error");
+      this.sendLog(`Pull failed: ${errorMsg}`, "error");
       NotificationService.handleSyncError(error as Error);
     }
   }
@@ -343,14 +352,15 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   private async handleDisconnect(): Promise<void> {
     // Delete credentials and clear URL
     await this._configService.deleteCredentials();
-    await vscode.workspace.getConfiguration('antigravitySync')
-      .update('repositoryUrl', '', vscode.ConfigurationTarget.Global);
+    await vscode.workspace
+      .getConfiguration("antigravitySync")
+      .update("repositoryUrl", "", vscode.ConfigurationTarget.Global);
 
     // Delete .git folder to allow connecting to different repo
     const syncRepoPath = this._configService.getSyncRepoPath();
-    const gitPath = require('path').join(syncRepoPath, '.git');
-    if (require('fs').existsSync(gitPath)) {
-      require('fs').rmSync(gitPath, { recursive: true, force: true });
+    const gitPath = require("path").join(syncRepoPath, ".git");
+    if (require("fs").existsSync(gitPath)) {
+      require("fs").rmSync(gitPath, { recursive: true, force: true });
     }
 
     await this.sendConfigState();
@@ -359,7 +369,9 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   /**
    * Update status in webview
    */
-  private async updateStatus(status?: 'synced' | 'syncing' | 'error' | 'pending'): Promise<void> {
+  private async updateStatus(
+    status?: "synced" | "syncing" | "error" | "pending",
+  ): Promise<void> {
     if (!this._view) return;
 
     let lastSync: string | undefined;
@@ -367,59 +379,72 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       // Get actual status from service
       try {
         const syncStatus = await this._syncService.getStatus();
-        status = syncStatus.syncStatus === 'Ready' ? 'synced' : 'pending';
+        status = syncStatus.syncStatus === "Ready" ? "synced" : "pending";
         lastSync = syncStatus.lastSync || undefined;
       } catch {
-        status = 'synced';
+        status = "synced";
       }
     }
 
     this._view.webview.postMessage({
-      type: 'updateStatus',
-      data: { status, lastSync }
+      type: "updateStatus",
+      data: { status, lastSync },
     });
   }
 
   /**
    * Handle folder toggle from webview
    */
-  private async handleFolderToggle(folder: string, enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration('antigravitySync');
-    const syncFolders = config.get<string[]>('syncFolders', ['knowledge', 'antigravity']);
+  private async handleFolderToggle(
+    folder: string,
+    enabled: boolean,
+  ): Promise<void> {
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const syncFolders = config.get<string[]>("syncFolders", [
+      "knowledge",
+      "antigravity",
+    ]);
 
     let newFolders: string[];
     if (enabled) {
       newFolders = [...new Set([...syncFolders, folder])];
     } else {
-      newFolders = syncFolders.filter(f => f !== folder);
+      newFolders = syncFolders.filter((f) => f !== folder);
     }
 
-    await config.update('syncFolders', newFolders, vscode.ConfigurationTarget.Global);
+    await config.update(
+      "syncFolders",
+      newFolders,
+      vscode.ConfigurationTarget.Global,
+    );
   }
 
   /**
    * Handle enable/disable sync toggle
    */
   private async handleToggleSyncEnabled(enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration('antigravitySync');
-    await config.update('enabled', enabled, vscode.ConfigurationTarget.Global);
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    await config.update("enabled", enabled, vscode.ConfigurationTarget.Global);
 
     // Notify user
     if (enabled) {
-      NotificationService.info('Sync enabled');
+      NotificationService.info("Sync enabled");
     } else {
-      NotificationService.info('Sync disabled');
+      NotificationService.info("Sync disabled");
     }
   }
 
   /**
    * Send log message to webview
    */
-  private sendLog(message: string, logType: 'success' | 'error' | 'info'): void {
+  private sendLog(
+    message: string,
+    logType: "success" | "error" | "info",
+  ): void {
     if (!this._view) return;
     this._view.webview.postMessage({
-      type: 'log',
-      data: { message, logType }
+      type: "log",
+      data: { message, logType },
     });
   }
 
@@ -432,14 +457,14 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     try {
       const status = await this._syncService.getDetailedStatus();
       this._view.webview.postMessage({
-        type: 'gitStatus',
+        type: "gitStatus",
         data: {
           ahead: status.ahead,
           behind: status.behind,
           files: status.files,
           totalFiles: status.totalFiles,
-          syncRepoPath: this._configService.getSyncRepoPath()
-        }
+          syncRepoPath: this._configService.getSyncRepoPath(),
+        },
       });
     } catch {
       // Ignore errors
@@ -452,8 +477,8 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   public showError(message: string): void {
     if (!this._view) return;
     this._view.webview.postMessage({
-      type: 'showError',
-      data: { message }
+      type: "showError",
+      data: { message },
     });
   }
 
@@ -471,27 +496,30 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   public async tryAutoStartRetry(): Promise<void> {
     // Set up log callback
     this._autoRetryService.setLogCallback((msg, type) => {
-      this.sendAutoRetryLog(msg, type === 'warning' ? 'info' : type);
+      this.sendAutoRetryLog(msg, type === "warning" ? "info" : type);
     });
 
     // Check CDP status
     const cdpAvailable = await this._autoRetryService.isCDPAvailable();
 
     if (!cdpAvailable) {
-      this.sendAutoRetryLog('Auto-start: CDP not available. Please restart IDE with CDP flag.', 'error');
+      this.sendAutoRetryLog(
+        "Auto-start: CDP not available. Please restart IDE with CDP flag.",
+        "error",
+      );
       this.sendAutoRetryStatus();
       return;
     }
 
     // CDP available - start
-    this.sendAutoRetryLog('Auto-starting Auto Retry...', 'info');
+    this.sendAutoRetryLog("Auto-starting Auto Retry...", "info");
     const started = await this._autoRetryService.start();
 
     if (started) {
       this.sendAutoRetryStatus();
-      this.sendAutoRetryLog('✅ Auto Retry auto-started!', 'success');
+      this.sendAutoRetryLog("✅ Auto Retry auto-started!", "success");
     } else {
-      this.sendAutoRetryLog('Auto-start failed', 'error');
+      this.sendAutoRetryLog("Auto-start failed", "error");
       this.sendAutoRetryStatus();
     }
   }
@@ -501,11 +529,11 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Single button flow: check CDP -> if OK, start; if not, auto-setup
    */
   private async handleStartAutoRetry(): Promise<void> {
-    this.sendAutoRetryLog('Checking CDP...', 'info');
+    this.sendAutoRetryLog("Checking CDP...", "info");
 
     // Set up log callback
     this._autoRetryService.setLogCallback((msg, type) => {
-      this.sendAutoRetryLog(msg, type === 'warning' ? 'info' : type);
+      this.sendAutoRetryLog(msg, type === "warning" ? "info" : type);
     });
 
     // Check CDP status first
@@ -513,26 +541,34 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
 
     if (!cdpAvailable) {
       // CDP not available - auto setup
-      this.sendAutoRetryLog('CDP not enabled. Setting up...', 'info');
+      this.sendAutoRetryLog("CDP not enabled. Setting up...", "info");
       const setupSuccess = await this._autoRetryService.setupCDP();
 
       if (setupSuccess) {
         // Setup done, user needs to restart - dialog already shown by Relauncher
-        this.sendAutoRetryLog('Please restart IDE to enable Auto Retry', 'info');
+        this.sendAutoRetryLog(
+          "Please restart IDE to enable Auto Retry",
+          "info",
+        );
       } else {
-        this.sendAutoRetryLog('Setup failed. Check instructions above.', 'error');
+        this.sendAutoRetryLog(
+          "Setup failed. Check instructions above.",
+          "error",
+        );
       }
       this.sendAutoRetryStatus();
       return;
     }
 
     // CDP available - start immediately
-    this.sendAutoRetryLog('CDP available! Starting...', 'success');
+    this.sendAutoRetryLog("CDP available! Starting...", "success");
     const started = await this._autoRetryService.start();
 
     if (started) {
       this.sendAutoRetryStatus();
-      NotificationService.info('Auto Retry started - auto-clicking Retry buttons');
+      NotificationService.info(
+        "Auto Retry started - auto-clicking Retry buttons",
+      );
     } else {
       this.sendAutoRetryStatus();
     }
@@ -544,7 +580,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   private async handleStopAutoRetry(): Promise<void> {
     await this._autoRetryService.stop();
     this.sendAutoRetryStatus();
-    this.sendAutoRetryLog('Auto Retry stopped', 'info');
+    this.sendAutoRetryLog("Auto Retry stopped", "info");
   }
 
   /**
@@ -554,23 +590,26 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     if (!this._view) return;
     const status = this._autoRetryService.getStatus();
     this._view.webview.postMessage({
-      type: 'autoRetryStatus',
+      type: "autoRetryStatus",
       data: {
         running: status.running,
         retryCount: status.retryCount,
-        connectionCount: status.connectionCount
-      }
+        connectionCount: status.connectionCount,
+      },
     });
   }
 
   /**
    * Send auto-retry log message to webview
    */
-  private sendAutoRetryLog(message: string, logType: 'success' | 'error' | 'info'): void {
+  private sendAutoRetryLog(
+    message: string,
+    logType: "success" | "error" | "info",
+  ): void {
     if (!this._view) return;
     this._view.webview.postMessage({
-      type: 'autoRetryLog',
-      data: { message, logType }
+      type: "autoRetryLog",
+      data: { message, logType },
     });
   }
 
@@ -578,9 +617,16 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Handle set auto-start setting from webview
    */
   private async handleSetAutoStart(enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration('antigravitySync');
-    await config.update('autoStartRetry', enabled, vscode.ConfigurationTarget.Global);
-    this.sendAutoRetryLog(enabled ? 'Auto-start enabled' : 'Auto-start disabled', 'info');
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    await config.update(
+      "autoStartRetry",
+      enabled,
+      vscode.ConfigurationTarget.Global,
+    );
+    this.sendAutoRetryLog(
+      enabled ? "Auto-start enabled" : "Auto-start disabled",
+      "info",
+    );
   }
 
   /**
@@ -588,11 +634,11 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    */
   private sendAutoStartSetting(): void {
     if (!this._view) return;
-    const config = vscode.workspace.getConfiguration('antigravitySync');
-    const enabled = config.get('autoStartRetry', false);
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const enabled = config.get("autoStartRetry", false);
     this._view.webview.postMessage({
-      type: 'autoStartSetting',
-      data: { enabled }
+      type: "autoStartSetting",
+      data: { enabled },
     });
   }
 
@@ -601,10 +647,16 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    */
   private _getHtmlForWebview(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'main.js')
+      vscode.Uri.joinPath(this._extensionUri, "dist", "webview", "main.js"),
     );
     const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'media', 'styles.css')
+      vscode.Uri.joinPath(
+        this._extensionUri,
+        "dist",
+        "webview",
+        "media",
+        "styles.css",
+      ),
     );
 
     const nonce = this.getNonce();
@@ -626,8 +678,9 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   }
 
   private getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let text = "";
+    const possible =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     for (let i = 0; i < 32; i++) {
       text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
