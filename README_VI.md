@@ -63,7 +63,8 @@ Sử dụng Chrome DevTools Protocol (CDP) để inject script giám sát IDE we
 
 ## 🔄 Auto Sync
 
-Đồng bộ **Gemini Antigravity context** (`~/.gemini/antigravity/`) giữa các máy thông qua Git repository riêng tư.
+Đồng bộ **AI agent context** (Antigravity, Cursor, Windsurf) giữa các máy thông qua Git repository riêng tư.  
+Project mode có thể theo dõi `.agent/`, `.cursor/`, `.cursorrules`, `.windsurf/` trong repo (chỉ manual).
 
 **Vấn đề được giải quyết:** Khi chuyển máy, tất cả lịch sử hội thoại, Knowledge Items và brain artifacts bị mất. Extension này tự động đồng bộ qua Git để bảo toàn mọi thứ.
 
@@ -122,11 +123,12 @@ Cmd+Shift+P (macOS) / Ctrl+Shift+P (Windows/Linux)
 
 ## Tính Năng
 
+- **Multi-agent sync** — Antigravity, Cursor, Windsurf
+- **Private + project modes** — Private repo + project repo (manual)
 - **Tự động đồng bộ** — Tự động sync thay đổi lên repo riêng tư
 - **Chỉ repo riêng tư** — Chỉ chấp nhận repository private
 - **Bảo vệ dữ liệu nhạy cảm** — Tự động loại trừ OAuth tokens và credentials
 - **Side panel** — Dashboard hiển thị trạng thái sync, files và lịch sử
-- **Đồng bộ chọn lọc** — Chọn thư mục cần sync
 - **Hướng dẫn setup** — Cấu hình từng bước
 
 ## Cài Đặt
@@ -177,6 +179,11 @@ agy --install-extension antigravity-sync-0.1.1.vsix
 | `antigravitySync.syncFolders` | `["knowledge", "antigravity"]` | Thư mục cần sync |
 | `antigravitySync.excludePatterns` | `[]` | Patterns loại trừ thêm |
 | `antigravitySync.geminiPath` | `""` | Đường dẫn tùy chỉnh đến .gemini |
+| `antigravitySync.enabledAgents` | `["antigravity"]` | Agents được bật (antigravity, cursor, windsurf) |
+| `antigravitySync.syncMode` | `"private"` | Chế độ sync: private, project, both |
+| `antigravitySync.locale` | `"auto"` | Ngôn ngữ UI (auto/en/vi) |
+| `antigravitySync.agentPaths` | `{}` | Cấu hình path theo agent (global/project, override) |
+| `antigravitySync.agentExcludePatterns` | `{}` | Exclude patterns theo agent |
 
 ## Files Bị Loại Trừ (Mặc Định)
 

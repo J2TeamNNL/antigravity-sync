@@ -72,5 +72,45 @@
   "error.network.checkConnection": "Check your internet connection",
   "error.network.checkFirewall": "Check firewall settings",
   "error.git.checkRepo": "Verify repository URL is correct",
-  "error.git.checkPermissions": "Check you have write permissions"
+  "error.git.checkPermissions": "Check you have write permissions",
+
+  "panel.mode.title": "Sync Mode",
+  "panel.mode.desc": "Choose how you want to sync.",
+  "panel.locale.title": "Language",
+  "panel.locale.auto": "Auto",
+  "panel.locale.en": "English",
+  "panel.locale.vi": "Vietnamese",
+
+  "panel.agents.title": "Agents",
+  "panel.agents.desc": "Enable agents and choose global or project paths.",
+  "panel.agents.global": "Global",
+  "panel.agents.project": "Project",
+
+  "panel.config.title": "Setup",
+  "panel.config.desc": "Sync your AI context to a private Git repository.",
+  "panel.config.repoLabel": "Repository URL",
+  "panel.config.patLabel": "Access Token",
+  "panel.config.patHint": "Token needs repository read/write access",
+  "panel.config.connect": "Connect Repository",
+  "panel.config.errorMissing": "Please fill in both fields",
+
+  "panel.dashboard.syncEnabled": "Sync Enabled",
+  "panel.repo.title": "Repository",
+  "panel.gitStatus.title": "Sync Status",
+  "panel.gitStatus.filesToPush": "files to push",
+  "panel.gitStatus.commitsToPull": "commits to pull",
+  "panel.gitStatus.noChanges": "No pending changes",
+  "panel.gitStatus.more": "...and {0} more",
+  "panel.gitStatus.hint": "cd ~/.gemini-sync-repo && git status",
+  "panel.log.title": "Sync Log",
+  "panel.log.ready": "Ready",
+
+  "panel.project.title": "Project Sync",
+  "panel.project.desc": "Manual mode: shows changes inside project paths.",
+  "panel.project.refresh": "Refresh",
+  "panel.project.noWorkspace": "No workspace open.",
+  "panel.project.noPaths": "No project paths enabled.",
+  "panel.project.notGit": "Workspace is not a Git repository.",
+  "panel.project.empty": "No changes detected",
+  "panel.project.files": "files"
 }

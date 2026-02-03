@@ -72,5 +72,45 @@
   "error.network.checkConnection": "Kiểm tra kết nối internet của bạn",
   "error.network.checkFirewall": "Kiểm tra cài đặt tường lửa",
   "error.git.checkRepo": "Xác minh URL repository đúng",
-  "error.git.checkPermissions": "Kiểm tra bạn có quyền ghi"
+  "error.git.checkPermissions": "Kiểm tra bạn có quyền ghi",
+
+  "panel.mode.title": "Chế độ đồng bộ",
+  "panel.mode.desc": "Chọn cách bạn muốn đồng bộ.",
+  "panel.locale.title": "Ngôn ngữ",
+  "panel.locale.auto": "Tự động",
+  "panel.locale.en": "Tiếng Anh",
+  "panel.locale.vi": "Tiếng Việt",
+
+  "panel.agents.title": "Agents",
+  "panel.agents.desc": "Bật/tắt agent và chọn đường dẫn global hoặc project.",
+  "panel.agents.global": "Global",
+  "panel.agents.project": "Dự án",
+
+  "panel.config.title": "Cấu hình",
+  "panel.config.desc": "Đồng bộ context AI của bạn lên Git repo riêng tư.",
+  "panel.config.repoLabel": "URL Repository",
+  "panel.config.patLabel": "Access Token",
+  "panel.config.patHint": "Token cần quyền đọc/ghi repo",
+  "panel.config.connect": "Kết nối Repository",
+  "panel.config.errorMissing": "Vui lòng nhập đầy đủ hai trường",
+
+  "panel.dashboard.syncEnabled": "Bật đồng bộ",
+  "panel.repo.title": "Repository",
+  "panel.gitStatus.title": "Trạng thái đồng bộ",
+  "panel.gitStatus.filesToPush": "file cần đẩy",
+  "panel.gitStatus.commitsToPull": "commit cần kéo",
+  "panel.gitStatus.noChanges": "Không có thay đổi",
+  "panel.gitStatus.more": "...và {0} mục nữa",
+  "panel.gitStatus.hint": "cd ~/.gemini-sync-repo && git status",
+  "panel.log.title": "Log đồng bộ",
+  "panel.log.ready": "Sẵn sàng",
+
+  "panel.project.title": "Đồng bộ dự án",
+  "panel.project.desc": "Chế độ thủ công: hiển thị thay đổi trong các đường dẫn dự án.",
+  "panel.project.refresh": "Làm mới",
+  "panel.project.noWorkspace": "Chưa mở workspace.",
+  "panel.project.noPaths": "Chưa bật đường dẫn dự án.",
+  "panel.project.notGit": "Workspace không phải Git repo.",
+  "panel.project.empty": "Không có thay đổi",
+  "panel.project.files": "file"
 }

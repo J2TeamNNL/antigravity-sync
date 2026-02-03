@@ -9,6 +9,7 @@ import { ConfigService } from './ConfigService';
 import { GitService } from './GitService';
 import { FilterService } from './FilterService';
 import { StatusBarService, SyncState } from './StatusBarService';
+import { AgentId, AgentProvider, getAllProviders } from '../providers';
 
 export interface SyncStatus {
   syncStatus: string;
@@ -34,8 +35,9 @@ export class SyncService {
   private configService: ConfigService;
   private statusBar: StatusBarService;
   private gitService: GitService | null = null;
-  private filterService: FilterService | null = null;
   private isSyncing = false;
+  private providers: AgentProvider[] = [];
+  private useLegacyAntigravityLayout = false;
 
   // Auto-sync timer
   private autoSyncTimer: NodeJS.Timeout | null = null;
@@ -51,6 +53,7 @@ export class SyncService {
     this.context = context;
     this.configService = configService;
     this.statusBar = statusBar;
+    this.providers = getAllProviders();
   }
 
   /**
@@ -58,6 +61,10 @@ export class SyncService {
    * Works with any Git provider (GitHub, GitLab, Bitbucket, etc.)
    */
   async initialize(): Promise<void> {
+    if (!this.configService.isPrivateModeEnabled()) {
+      return;
+    }
+
     const config = this.configService.getConfig();
     const token = await this.configService.getCredentials();
 
@@ -70,11 +77,8 @@ export class SyncService {
     this.gitService = new GitService(syncRepoPath);
     await this.gitService.initializeRepository(config.repositoryUrl, token);
 
-    // Initialize filter service
-    this.filterService = new FilterService(
-      config.geminiPath,
-      config.excludePatterns
-    );
+    // Detect legacy Antigravity layout (root-level folders)
+    this.useLegacyAntigravityLayout = this.detectLegacyAntigravityLayout(syncRepoPath);
 
     // Copy initial files
     await this.copyFilesToSyncRepo();
@@ -88,6 +92,26 @@ export class SyncService {
    */
   private getLockFilePath(): string {
     return path.join(this.configService.getSyncRepoPath(), '.sync.lock');
+  }
+
+  private detectLegacyAntigravityLayout(syncRepoPath: string): boolean {
+    const legacyMarkers = [
+      'brain',
+      'knowledge',
+      'conversations',
+      'skills',
+      'workflows',
+      'rules'
+    ];
+
+    return legacyMarkers.some(marker => fs.existsSync(path.join(syncRepoPath, marker)));
+  }
+
+  private getAgentSyncRoot(syncRepoPath: string, agentId: AgentId): string {
+    if (agentId === 'antigravity' && this.useLegacyAntigravityLayout) {
+      return syncRepoPath;
+    }
+    return path.join(syncRepoPath, 'agents', agentId);
   }
 
   /**
@@ -147,6 +171,10 @@ export class SyncService {
    * Full sync (push + pull)
    */
   async sync(): Promise<void> {
+    if (!this.configService.isPrivateModeEnabled()) {
+      return;
+    }
+
     if (this.isSyncing) {
       console.log(ts() + ' [SyncService.sync] Already syncing in this window, skipping...');
       return;
@@ -308,9 +336,6 @@ export class SyncService {
    * Copy files only (for refresh status without push)
    */
   async copyFilesOnly(): Promise<void> {
-    if (!this.filterService) {
-      return;
-    }
     await this.copyFilesToSyncRepo();
   }
 
@@ -350,30 +375,63 @@ export class SyncService {
    * @returns number of files copied
    */
   private async copyFilesToSyncRepo(): Promise<number> {
-    const config = this.configService.getConfig();
     const syncRepoPath = this.configService.getSyncRepoPath();
-
-    if (!this.filterService) {
-      return 0;
-    }
-
-    const filesToSync = await this.filterService.getFilesToSync();
     let copiedCount = 0;
+    const enabledAgents = this.configService.getEnabledAgents();
 
-    for (const relativePath of filesToSync) {
-      const sourcePath = path.join(config.geminiPath, relativePath);
-      const destPath = path.join(syncRepoPath, relativePath);
-
-      // Ensure directory exists
-      const destDir = path.dirname(destPath);
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
+    for (const provider of this.providers) {
+      if (!enabledAgents.includes(provider.id)) {
+        continue;
+      }
+      const pathSettings = this.configService.getAgentPathSettings(provider.id);
+      if (!pathSettings.globalEnabled) {
+        continue;
       }
 
-      // Copy file
-      if (fs.existsSync(sourcePath)) {
-        fs.copyFileSync(sourcePath, destPath);
-        copiedCount++;
+      const globalPaths = this.configService.getAgentGlobalPaths(provider.id);
+      const defaultExcludes = provider.getDefaultExcludes();
+      const customExcludes = this.configService.getAgentExcludePatterns(provider.id);
+      const ignoreFileName = provider.getIgnoreFileName?.();
+
+      for (const globalPath of globalPaths) {
+        if (!fs.existsSync(globalPath)) {
+          continue;
+        }
+
+        const destRoot = this.getAgentSyncRoot(syncRepoPath, provider.id);
+        if (!fs.existsSync(destRoot)) {
+          fs.mkdirSync(destRoot, { recursive: true });
+        }
+
+        const stat = fs.statSync(globalPath);
+        if (stat.isFile()) {
+          const destPath = path.join(destRoot, path.basename(globalPath));
+          fs.copyFileSync(globalPath, destPath);
+          copiedCount += 1;
+          continue;
+        }
+
+        const filterService = new FilterService(
+          globalPath,
+          [...defaultExcludes, ...customExcludes],
+          ignoreFileName
+        );
+        const filesToSync = await filterService.getFilesToSync();
+
+        for (const relativePath of filesToSync) {
+          const sourcePath = path.join(globalPath, relativePath);
+          const destPath = path.join(destRoot, relativePath);
+
+          const destDir = path.dirname(destPath);
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+
+          if (fs.existsSync(sourcePath)) {
+            fs.copyFileSync(sourcePath, destPath);
+            copiedCount++;
+          }
+        }
       }
     }
 
@@ -385,11 +443,43 @@ export class SyncService {
    * @returns number of files copied
    */
   private async copyFilesFromSyncRepo(): Promise<number> {
-    const config = this.configService.getConfig();
     const syncRepoPath = this.configService.getSyncRepoPath();
+    const enabledAgents = this.configService.getEnabledAgents();
+    let totalCopied = 0;
 
-    // Walk sync repo and copy back (excluding .git)
-    return await this.copyDirectoryContents(syncRepoPath, config.geminiPath, ['.git']);
+    for (const provider of this.providers) {
+      if (!enabledAgents.includes(provider.id)) {
+        continue;
+      }
+      const pathSettings = this.configService.getAgentPathSettings(provider.id);
+      if (!pathSettings.globalEnabled) {
+        continue;
+      }
+
+      const globalPaths = this.configService.getAgentGlobalPaths(provider.id);
+      if (globalPaths.length === 0) {
+        continue;
+      }
+
+      const targetPath = globalPaths[0];
+      if (!targetPath) {
+        continue;
+      }
+
+      const sourceRoot = this.getAgentSyncRoot(syncRepoPath, provider.id);
+      if (!fs.existsSync(sourceRoot)) {
+        continue;
+      }
+
+      const excludeNames = ['.git', '.sync.lock'];
+      if (provider.id === 'antigravity' && this.useLegacyAntigravityLayout) {
+        excludeNames.push('agents');
+      }
+
+      totalCopied += await this.copyDirectoryContents(sourceRoot, targetPath, excludeNames);
+    }
+
+    return totalCopied;
   }
 
   /**
@@ -399,7 +489,7 @@ export class SyncService {
   private async copyDirectoryContents(
     source: string,
     dest: string,
-    excludeDirs: string[] = []
+    excludeNames: string[] = []
   ): Promise<number> {
     if (!fs.existsSync(source)) {
       return 0;
@@ -409,7 +499,7 @@ export class SyncService {
     const entries = fs.readdirSync(source, { withFileTypes: true });
 
     for (const entry of entries) {
-      if (excludeDirs.includes(entry.name)) {
+      if (excludeNames.includes(entry.name)) {
         continue;
       }
 
@@ -417,7 +507,7 @@ export class SyncService {
       const destPath = path.join(dest, entry.name);
 
       if (entry.isDirectory()) {
-        count += await this.copyDirectoryContents(sourcePath, destPath, excludeDirs);
+        count += await this.copyDirectoryContents(sourcePath, destPath, excludeNames);
       } else {
         const destDir = path.dirname(destPath);
         if (!fs.existsSync(destDir)) {
@@ -451,6 +541,13 @@ export class SyncService {
    * Start auto-sync timer
    */
   startAutoSync(): void {
+    if (!this.configService.isPrivateModeEnabled()) {
+      return;
+    }
+    if (!this.gitService) {
+      return;
+    }
+
     this.stopAutoSync(); // Clear any existing timer
 
     this.nextSyncTime = Date.now() + AUTO_SYNC_INTERVAL_MS;

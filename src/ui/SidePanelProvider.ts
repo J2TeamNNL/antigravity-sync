@@ -7,6 +7,9 @@ import { ConfigService } from "../services/ConfigService";
 import { NotificationService } from "../services/NotificationService";
 import { GitService } from "../services/GitService";
 import { AutoRetryService } from "../services/AutoRetryService";
+import { ProjectSyncService } from "../services/ProjectSyncService";
+import { getAllProviders } from "../providers";
+import { i18n } from "../services/LocalizationService";
 
 export class SidePanelProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "antigravitySync.mainPanel";
@@ -16,6 +19,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   private readonly _syncService: SyncService;
   private readonly _configService: ConfigService;
   private readonly _autoRetryService: AutoRetryService;
+  private readonly _projectSyncService: ProjectSyncService;
 
   constructor(
     extensionUri: vscode.Uri,
@@ -26,6 +30,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     this._syncService = syncService;
     this._configService = configService;
     this._autoRetryService = new AutoRetryService();
+    this._projectSyncService = new ProjectSyncService(configService);
   }
 
   public resolveWebviewView(
@@ -69,6 +74,18 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         case "toggleFolder":
           await this.handleFolderToggle(message.folder, message.enabled);
           break;
+        case "toggleAgent":
+          await this.handleToggleAgent(message.agentId, message.enabled);
+          break;
+        case "toggleAgentPath":
+          await this.handleToggleAgentPath(message.agentId, message.pathType, message.enabled);
+          break;
+        case "setSyncMode":
+          await this.handleSetSyncMode(message.mode);
+          break;
+        case "setLocale":
+          await this.handleSetLocale(message.locale);
+          break;
         case "toggleSyncEnabled":
           await this.handleToggleSyncEnabled(message.enabled);
           break;
@@ -78,6 +95,9 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         case "getGitStatus":
           // Just refresh status (git fetch + check) - no file copy needed
           await this.sendGitStatus();
+          break;
+        case "refreshProjectStatus":
+          await this.sendProjectStatus();
           break;
         case "startAutoRetry":
           await this.handleStartAutoRetry();
@@ -102,21 +122,46 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   private async sendConfigState(): Promise<void> {
     if (!this._view) return;
 
-    const isConfigured = await this._configService.isConfigured();
     const config = this._configService.getConfig();
-    const vsConfig = vscode.workspace.getConfiguration("antigravitySync");
-    const syncFolders = vsConfig.get<string[]>("syncFolders", ["knowledge"]);
+    const privateConfigured = await this._configService.isPrivateConfigured();
+    const syncMode = this._configService.getSyncMode();
+
+    i18n.setLocale(this._configService.getResolvedLocale());
+
+    const enabledAgents = this._configService.getEnabledAgents();
+    const agentPathSettings = this._configService.getAgentPathSettingsMap();
+    const providers = getAllProviders();
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const agents = providers.map((provider) => ({
+      id: provider.id,
+      name: i18n.t(provider.displayNameKey),
+      hasGlobal: provider.getGlobalPaths().length > 0,
+      hasProject: workspaceRoot
+        ? provider.getProjectPaths(workspaceRoot).length > 0
+        : true,
+    }));
+
+    const projectStatus = this._configService.isProjectModeEnabled()
+      ? await this._projectSyncService.getStatus()
+      : undefined;
 
     this._view.webview.postMessage({
       type: "configured",
       data: {
-        configured: isConfigured,
+        configured: privateConfigured,
+        privateConfigured,
         repoUrl: config.repositoryUrl,
-        syncFolders: syncFolders,
+        syncMode,
+        enabledAgents,
+        agentPathSettings,
+        agents,
+        locale: this._configService.getLocaleSetting(),
+        projectStatus,
+        strings: this.getUiStrings(),
       },
     });
 
-    if (isConfigured) {
+    if (privateConfigured) {
       await this.updateStatus();
 
       // Wire git logger to UI panel (for when extension is already configured)
@@ -144,7 +189,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     if (!repoUrl || !pat) {
       this._view.webview.postMessage({
         type: "configError",
-        data: { message: "Please fill in both fields" },
+        data: { message: i18n.t("panel.config.errorMissing") },
       });
       return;
     }
@@ -296,10 +341,18 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     this.updateStatus("syncing");
     this.sendLog("Syncing...", "info");
     try {
+      const privateConfigured = await this._configService.isPrivateConfigured();
+      if (!privateConfigured) {
+        throw new Error("Private repository not configured");
+      }
+
       await this._syncService.sync();
       this.updateStatus("synced");
       this.sendLog("Sync complete", "success");
       await this.sendGitStatus();
+      if (this._configService.isProjectModeEnabled()) {
+        await this.sendProjectStatus();
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.updateStatus("error");
@@ -315,10 +368,18 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     this.updateStatus("syncing");
     this.sendLog("Pushing...", "info");
     try {
+      const privateConfigured = await this._configService.isPrivateConfigured();
+      if (!privateConfigured) {
+        throw new Error("Private repository not configured");
+      }
+
       await this._syncService.push();
       this.updateStatus("synced");
       this.sendLog("Push complete", "success");
       await this.sendGitStatus();
+      if (this._configService.isProjectModeEnabled()) {
+        await this.sendProjectStatus();
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.updateStatus("error");
@@ -334,10 +395,18 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     this.updateStatus("syncing");
     this.sendLog("Pulling...", "info");
     try {
+      const privateConfigured = await this._configService.isPrivateConfigured();
+      if (!privateConfigured) {
+        throw new Error("Private repository not configured");
+      }
+
       await this._syncService.pull();
       this.updateStatus("synced");
       this.sendLog("Pull complete", "success");
       await this.sendGitStatus();
+      if (this._configService.isProjectModeEnabled()) {
+        await this.sendProjectStatus();
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.updateStatus("error");
@@ -419,6 +488,81 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     );
   }
 
+  private async handleToggleAgent(agentId: string, enabled: boolean): Promise<void> {
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const currentAgents = config.get<string[]>("enabledAgents", ["antigravity"]);
+    const agentSet = new Set(currentAgents);
+
+    if (enabled) {
+      agentSet.add(agentId);
+    } else {
+      agentSet.delete(agentId);
+    }
+
+    if (agentSet.size === 0) {
+      agentSet.add("antigravity");
+    }
+
+    await config.update(
+      "enabledAgents",
+      Array.from(agentSet),
+      vscode.ConfigurationTarget.Global,
+    );
+
+    await this.sendConfigState();
+  }
+
+  private async handleToggleAgentPath(
+    agentId: string,
+    pathType: "global" | "project",
+    enabled: boolean,
+  ): Promise<void> {
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const agentPaths = config.get<Record<string, any>>("agentPaths", {});
+    const current = agentPaths[agentId] || {};
+
+    agentPaths[agentId] = {
+      ...current,
+      ...(pathType === "global" ? { globalEnabled: enabled } : { projectEnabled: enabled }),
+    };
+
+    await config.update(
+      "agentPaths",
+      agentPaths,
+      vscode.ConfigurationTarget.Global,
+    );
+
+    await this.sendConfigState();
+  }
+
+  private async handleSetSyncMode(mode: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    await config.update("syncMode", mode, vscode.ConfigurationTarget.Global);
+
+    if (this._configService.isPrivateModeEnabled()) {
+      const privateConfigured = await this._configService.isPrivateConfigured();
+      if (privateConfigured) {
+        try {
+          await this._syncService.initialize();
+        } catch {
+          // Ignore initialization errors; UI will surface status
+        }
+        this._syncService.startAutoSync();
+      }
+    } else {
+      this._syncService.stopAutoSync();
+    }
+
+    await this.sendConfigState();
+  }
+
+  private async handleSetLocale(locale: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    await config.update("locale", locale, vscode.ConfigurationTarget.Global);
+    i18n.setLocale(this._configService.getResolvedLocale());
+    await this.sendConfigState();
+  }
+
   /**
    * Handle enable/disable sync toggle
    */
@@ -455,6 +599,11 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     if (!this._view) return;
 
     try {
+      const privateConfigured = await this._configService.isPrivateConfigured();
+      if (!privateConfigured) {
+        return;
+      }
+
       const status = await this._syncService.getDetailedStatus();
       this._view.webview.postMessage({
         type: "gitStatus",
@@ -465,6 +614,20 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
           totalFiles: status.totalFiles,
           syncRepoPath: this._configService.getSyncRepoPath(),
         },
+      });
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  private async sendProjectStatus(): Promise<void> {
+    if (!this._view) return;
+
+    try {
+      const status = await this._projectSyncService.getStatus();
+      this._view.webview.postMessage({
+        type: "projectStatus",
+        data: status,
       });
     } catch {
       // Ignore errors
@@ -640,6 +803,64 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       type: "autoStartSetting",
       data: { enabled },
     });
+  }
+
+  private getUiStrings(): Record<string, string> {
+    return {
+      "panel.mode.title": i18n.t("panel.mode.title"),
+      "panel.mode.desc": i18n.t("panel.mode.desc"),
+      "panel.mode.private": i18n.t("mode.privateRepo"),
+      "panel.mode.project": i18n.t("mode.projectRepo"),
+      "panel.mode.both": i18n.t("mode.both"),
+
+      "panel.locale.title": i18n.t("panel.locale.title"),
+      "panel.locale.auto": i18n.t("panel.locale.auto"),
+      "panel.locale.en": i18n.t("panel.locale.en"),
+      "panel.locale.vi": i18n.t("panel.locale.vi"),
+
+      "panel.agents.title": i18n.t("panel.agents.title"),
+      "panel.agents.desc": i18n.t("panel.agents.desc"),
+      "panel.agents.global": i18n.t("panel.agents.global"),
+      "panel.agents.project": i18n.t("panel.agents.project"),
+
+      "panel.config.title": i18n.t("panel.config.title"),
+      "panel.config.desc": i18n.t("panel.config.desc"),
+      "panel.config.repoLabel": i18n.t("panel.config.repoLabel"),
+      "panel.config.patLabel": i18n.t("panel.config.patLabel"),
+      "panel.config.patHint": i18n.t("panel.config.patHint"),
+      "panel.config.connect": i18n.t("panel.config.connect"),
+      "panel.config.errorMissing": i18n.t("panel.config.errorMissing"),
+
+      "panel.dashboard.status.synced": i18n.t("sync.synced"),
+      "panel.dashboard.status.syncing": i18n.t("sync.syncing"),
+      "panel.dashboard.status.error": i18n.t("sync.error"),
+      "panel.dashboard.status.pending": i18n.t("sync.pending"),
+      "panel.dashboard.push": i18n.t("ui.push"),
+      "panel.dashboard.pull": i18n.t("ui.pull"),
+      "panel.dashboard.syncEnabled": i18n.t("panel.dashboard.syncEnabled"),
+
+      "panel.repo.title": i18n.t("panel.repo.title"),
+      "panel.repo.disconnect": i18n.t("ui.disconnect"),
+
+      "panel.gitStatus.title": i18n.t("panel.gitStatus.title"),
+      "panel.gitStatus.filesToPush": i18n.t("panel.gitStatus.filesToPush"),
+      "panel.gitStatus.commitsToPull": i18n.t("panel.gitStatus.commitsToPull"),
+      "panel.gitStatus.noChanges": i18n.t("panel.gitStatus.noChanges"),
+      "panel.gitStatus.more": i18n.t("panel.gitStatus.more"),
+      "panel.gitStatus.hint": i18n.t("panel.gitStatus.hint"),
+
+      "panel.log.title": i18n.t("panel.log.title"),
+      "panel.log.ready": i18n.t("panel.log.ready"),
+
+      "panel.project.title": i18n.t("panel.project.title"),
+      "panel.project.desc": i18n.t("panel.project.desc"),
+      "panel.project.refresh": i18n.t("panel.project.refresh"),
+      "panel.project.noWorkspace": i18n.t("panel.project.noWorkspace"),
+      "panel.project.noPaths": i18n.t("panel.project.noPaths"),
+      "panel.project.notGit": i18n.t("panel.project.notGit"),
+      "panel.project.empty": i18n.t("panel.project.empty"),
+      "panel.project.files": i18n.t("panel.project.files")
+    };
   }
 
   /**

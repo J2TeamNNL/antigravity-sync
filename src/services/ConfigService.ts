@@ -7,6 +7,18 @@ import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
+import { AgentId, getProvider } from '../providers';
+
+export type SyncMode = 'private' | 'project' | 'both';
+
+export interface AgentPathSetting {
+  globalEnabled?: boolean;
+  projectEnabled?: boolean;
+  globalPath?: string;
+}
+
+export type AgentPathSettings = Partial<Record<AgentId, AgentPathSetting>>;
+export type AgentExcludePatterns = Partial<Record<AgentId, string[]>>;
 
 const execAsync = promisify(exec);
 
@@ -16,6 +28,11 @@ export interface SyncConfig {
   syncIntervalMinutes: number;
   excludePatterns: string[];
   geminiPath: string;
+  enabledAgents: AgentId[];
+  syncMode: SyncMode;
+  locale: string;
+  agentPaths: AgentPathSettings;
+  agentExcludePatterns: AgentExcludePatterns;
 }
 
 export class ConfigService {
@@ -35,7 +52,14 @@ export class ConfigService {
       autoSync: config.get<boolean>('autoSync', true),
       syncIntervalMinutes: config.get<number>('syncIntervalMinutes', 5),
       excludePatterns: config.get<string[]>('excludePatterns', []),
-      geminiPath: config.get<string>('geminiPath', '') || this.getDefaultGeminiPath()
+      geminiPath: config.get<string>('geminiPath', '') || this.getDefaultGeminiPath(),
+      enabledAgents: this.normalizeEnabledAgents(
+        config.get<AgentId[]>('enabledAgents', ['antigravity'])
+      ),
+      syncMode: config.get<SyncMode>('syncMode', 'private'),
+      locale: config.get<string>('locale', 'auto'),
+      agentPaths: config.get<AgentPathSettings>('agentPaths', {}),
+      agentExcludePatterns: config.get<AgentExcludePatterns>('agentExcludePatterns', {})
     };
   }
 
@@ -43,12 +67,136 @@ export class ConfigService {
    * Check if extension is configured
    */
   async isConfigured(): Promise<boolean> {
+    return this.isPrivateConfigured();
+  }
+
+  /**
+   * Check if private repo sync is configured
+   */
+  async isPrivateConfigured(): Promise<boolean> {
     const config = this.getConfig();
     if (!config.repositoryUrl) {
       return false;
     }
     const pat = await this.getCredentials();
     return !!pat;
+  }
+
+  /**
+   * Check if private repo mode is enabled
+   */
+  isPrivateModeEnabled(): boolean {
+    const mode = this.getSyncMode();
+    return mode === 'private' || mode === 'both';
+  }
+
+  /**
+   * Check if project repo mode is enabled
+   */
+  isProjectModeEnabled(): boolean {
+    const mode = this.getSyncMode();
+    return mode === 'project' || mode === 'both';
+  }
+
+  /**
+   * Get sync mode
+   */
+  getSyncMode(): SyncMode {
+    return this.getConfig().syncMode;
+  }
+
+  /**
+   * Get locale setting (auto/en/vi)
+   */
+  getLocaleSetting(): string {
+    return this.getConfig().locale;
+  }
+
+  /**
+   * Resolve locale from settings (auto => vscode.env.language)
+   */
+  getResolvedLocale(): 'en' | 'vi' {
+    const locale = this.getLocaleSetting();
+    const rawLocale = locale === 'auto' ? (vscode.env.language || 'en') : locale;
+    return rawLocale.startsWith('vi') ? 'vi' : 'en';
+  }
+
+  /**
+   * Get enabled agents
+   */
+  getEnabledAgents(): AgentId[] {
+    return this.getConfig().enabledAgents;
+  }
+
+  /**
+   * Get per-agent path settings (merged with defaults)
+   */
+  getAgentPathSettings(agentId: AgentId): AgentPathSetting {
+    const config = this.getConfig();
+    const settings = config.agentPaths?.[agentId] || {};
+
+    return {
+      globalEnabled: settings.globalEnabled ?? true,
+      projectEnabled: settings.projectEnabled ?? true,
+      globalPath: settings.globalPath
+    };
+  }
+
+  /**
+   * Get a map of all agent path settings
+   */
+  getAgentPathSettingsMap(): AgentPathSettings {
+    const settings: AgentPathSettings = {};
+    const allAgents: AgentId[] = ['antigravity', 'cursor', 'windsurf'];
+    for (const agentId of allAgents) {
+      settings[agentId] = this.getAgentPathSettings(agentId);
+    }
+    return settings;
+  }
+
+  /**
+   * Get global paths for an agent (config override or provider defaults)
+   */
+  getAgentGlobalPaths(agentId: AgentId): string[] {
+    const provider = getProvider(agentId);
+    if (!provider) {
+      return [];
+    }
+
+    const settings = this.getAgentPathSettings(agentId);
+    if (settings.globalPath && settings.globalPath.trim()) {
+      return [settings.globalPath.trim()];
+    }
+
+    if (agentId === 'antigravity') {
+      const config = this.getConfig();
+      return [config.geminiPath || this.getDefaultGeminiPath()];
+    }
+
+    return provider.getGlobalPaths();
+  }
+
+  /**
+   * Get merged exclude patterns for an agent (global + per-agent)
+   */
+  getAgentExcludePatterns(agentId: AgentId): string[] {
+    const config = this.getConfig();
+    const perAgent = config.agentExcludePatterns?.[agentId] || [];
+    return [...(config.excludePatterns || []), ...(perAgent || [])];
+  }
+
+  private normalizeEnabledAgents(agents: AgentId[]): AgentId[] {
+    const valid: AgentId[] = ['antigravity', 'cursor', 'windsurf'];
+    const set = new Set<AgentId>();
+    for (const agent of agents || []) {
+      if (valid.includes(agent)) {
+        set.add(agent);
+      }
+    }
+    if (set.size === 0) {
+      set.add('antigravity');
+    }
+    return Array.from(set);
   }
 
   /**

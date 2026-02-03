@@ -135,6 +135,51 @@
           },
           "description": "Folders to sync within .gemini directory"
         },
+        "antigravitySync.enabledAgents": {
+          "type": "array",
+          "default": [
+            "antigravity"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "antigravity",
+              "cursor",
+              "windsurf"
+            ]
+          },
+          "description": "Enabled AI agents for sync"
+        },
+        "antigravitySync.syncMode": {
+          "type": "string",
+          "default": "private",
+          "enum": [
+            "private",
+            "project",
+            "both"
+          ],
+          "description": "Sync mode: private repo, project repo, or both"
+        },
+        "antigravitySync.locale": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "en",
+            "vi"
+          ],
+          "description": "UI language (auto, English, Vietnamese)"
+        },
+        "antigravitySync.agentPaths": {
+          "type": "object",
+          "default": {},
+          "description": "Per-agent path settings (global/project enabled, custom global path)"
+        },
+        "antigravitySync.agentExcludePatterns": {
+          "type": "object",
+          "default": {},
+          "description": "Per-agent exclude patterns (merged with global excludes)"
+        },
         "antigravitySync.autoRetryEnabled": {
           "type": "boolean",
           "default": false,

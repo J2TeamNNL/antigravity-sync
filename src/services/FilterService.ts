@@ -7,71 +7,30 @@ import ignore, { Ignore } from 'ignore';
 
 export class FilterService {
   private ig: Ignore;
-  private geminiPath: string;
+  private basePath: string;
+  private ignoreFileName?: string;
 
-  // Default patterns that MUST always be excluded
-  private static readonly DEFAULT_EXCLUDES = [
-    // Antigravity internal - NOT needed for sync (both root and nested)
-    'antigravity-browser-profile/**',
-    '**/browser_recordings/**',
-    '**/code_tracker/**',
-    '**/context_state/**',
-    '**/implicit/**',
-    '**/playground/**',
-
-    // Config files that are machine-specific
-    '**/browserAllowlist.txt',
-    '**/browserOnboardingStatus.txt',
-    '**/installation_id',
-    '**/user_settings.pb',
-
-    // OAuth and credentials
-    'google_accounts.json',
-    'oauth_creds.json',
-    '**/credentials.json',
-    '**/secrets.json',
-    '**/*.key',
-    '**/*.pem',
-
-    // Large binary files
-    '**/*.webm',
-    '**/*.mp4',
-    '**/*.mov',
-    '**/*.webp',
-
-    // Temp/log files (NOT *.pb - conversations are .pb files!)
-    '**/*.log',
-    '**/node_modules/',
-
-    // System files
-    '.DS_Store',
-    'Thumbs.db',
-
-    // Git internals (handled by git itself, but just in case)
-    '.git/'
-  ];
-
-  constructor(geminiPath: string, customPatterns: string[] = []) {
-    this.geminiPath = geminiPath;
+  constructor(basePath: string, customPatterns: string[] = [], ignoreFileName?: string) {
+    this.basePath = basePath;
+    this.ignoreFileName = ignoreFileName;
     this.ig = ignore();
 
-    // Add default excludes
-    this.ig.add(FilterService.DEFAULT_EXCLUDES);
-
-    // Add custom patterns from settings
     if (customPatterns.length > 0) {
       this.ig.add(customPatterns);
     }
 
-    // Load .antigravityignore if exists
     this.loadIgnoreFile();
   }
 
   /**
-   * Load custom ignore patterns from .antigravityignore
+   * Load custom ignore patterns from ignore file if configured
    */
   private loadIgnoreFile(): void {
-    const ignoreFilePath = path.join(this.geminiPath, '.antigravityignore');
+    if (!this.ignoreFileName) {
+      return;
+    }
+
+    const ignoreFilePath = path.join(this.basePath, this.ignoreFileName);
 
     if (fs.existsSync(ignoreFilePath)) {
       const content = fs.readFileSync(ignoreFilePath, 'utf-8');
@@ -105,7 +64,7 @@ export class FilterService {
    */
   async getFilesToSync(): Promise<string[]> {
     const files: string[] = [];
-    await this.walkDirectory(this.geminiPath, '', files);
+    await this.walkDirectory(this.basePath, '', files);
     return files;
   }
 
@@ -135,12 +94,5 @@ export class FilterService {
         files.push(entryRelativePath);
       }
     }
-  }
-
-  /**
-   * Get the default exclude patterns (for documentation/display)
-   */
-  static getDefaultExcludes(): string[] {
-    return [...FilterService.DEFAULT_EXCLUDES];
   }
 }

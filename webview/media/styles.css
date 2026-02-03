@@ -36,7 +36,51 @@ body {
   gap: var(--spacing-md);
 }
 
-.config-section .description {
+/* ========== Mode / Locale / Agents Sections ========== */
+.mode-section,
+.locale-section,
+.agents-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.agent-item {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: var(--radius-sm);
+  background: var(--vscode-editor-background);
+}
+
+.agent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.agent-paths {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.agent-path-item {
+  display: flex;
+  align-items: center;
+}
+
+.agent-path-item vscode-checkbox {
+  font-size: 11px;
+}
+
+.description {
   margin: 0;
   color: var(--vscode-descriptionForeground);
   font-size: 12px;
@@ -327,6 +371,16 @@ vscode-button.full-width::part(content) {
 /* ========== Git Status Section ========== */
 .git-status-section {
   margin-top: var(--spacing-md);
+}
+
+.project-status-section {
+  margin-top: var(--spacing-md);
+}
+
+#project-meta {
+  margin-top: var(--spacing-sm);
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
 }
 
 .git-status-content {

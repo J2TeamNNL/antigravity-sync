@@ -63,7 +63,8 @@ Uses Chrome DevTools Protocol (CDP) to inject a script that monitors the IDE web
 
 ## 🔄 Auto Sync
 
-Sync **Gemini Antigravity context** (`~/.gemini/antigravity/`) across machines via private Git repository.
+Sync **AI agent context** (Antigravity, Cursor, Windsurf) across machines via private Git repository.  
+Project mode can track `.agent/`, `.cursor/`, `.cursorrules`, `.windsurf/` inside your repo (manual only).
 
 **Problem solved:** When switching machines, all conversation history, Knowledge Items and brain artifacts are lost. This extension auto-syncs via Git to preserve everything.
 
@@ -122,11 +123,12 @@ Cmd+Shift+P (macOS) / Ctrl+Shift+P (Windows/Linux)
 
 ## Features
 
+- **Multi-agent sync** — Antigravity, Cursor, Windsurf
+- **Private + project modes** — Private repo + project repo (manual)
 - **Auto-sync** — Auto sync changes to private repository
 - **Private repo only** — Validate repository must be private
 - **Sensitive data protection** — Auto-exclude OAuth tokens and credentials
 - **Side panel** — Dashboard showing sync status, files and history
-- **Selective sync** — Choose folders to sync
 - **Setup wizard** — Step-by-step config
 
 ## Installation
@@ -177,6 +179,11 @@ agy --install-extension antigravity-sync-0.1.1.vsix
 | `antigravitySync.syncFolders` | `["knowledge", "antigravity"]` | Folders to sync |
 | `antigravitySync.excludePatterns` | `[]` | Additional exclude patterns |
 | `antigravitySync.geminiPath` | `""` | Custom path to .gemini |
+| `antigravitySync.enabledAgents` | `["antigravity"]` | Enabled agents (antigravity, cursor, windsurf) |
+| `antigravitySync.syncMode` | `"private"` | Sync mode: private, project, both |
+| `antigravitySync.locale` | `"auto"` | UI language (auto/en/vi) |
+| `antigravitySync.agentPaths` | `{}` | Per-agent path settings (global/project enabled, overrides) |
+| `antigravitySync.agentExcludePatterns` | `{}` | Per-agent exclude patterns |
 
 ## Excluded Files (Default)
 

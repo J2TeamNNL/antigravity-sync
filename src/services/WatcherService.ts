@@ -4,6 +4,7 @@
 import * as chokidar from 'chokidar';
 import { ConfigService } from './ConfigService';
 import { SyncService } from './SyncService';
+import { getAllProviders } from '../providers';
 
 export class WatcherService {
   private configService: ConfigService;
@@ -23,7 +24,27 @@ export class WatcherService {
   start(): void {
     const config = this.configService.getConfig();
 
-    if (!config.autoSync) {
+    if (!config.autoSync || !this.configService.isPrivateModeEnabled()) {
+      return;
+    }
+
+    const enabledAgents = this.configService.getEnabledAgents();
+    const providers = getAllProviders();
+    const pathsToWatch: string[] = [];
+
+    for (const provider of providers) {
+      if (!enabledAgents.includes(provider.id)) {
+        continue;
+      }
+      const pathSettings = this.configService.getAgentPathSettings(provider.id);
+      if (!pathSettings.globalEnabled) {
+        continue;
+      }
+      const agentPaths = this.configService.getAgentGlobalPaths(provider.id);
+      pathsToWatch.push(...agentPaths);
+    }
+
+    if (pathsToWatch.length === 0) {
       return;
     }
 
@@ -37,7 +58,7 @@ export class WatcherService {
       '**/oauth_creds.json'
     ];
 
-    this.watcher = chokidar.watch(config.geminiPath, {
+    this.watcher = chokidar.watch(pathsToWatch, {
       ignored,
       persistent: true,
       ignoreInitial: true,
@@ -54,7 +75,7 @@ export class WatcherService {
       .on('unlink', path => this.handleChange('unlink', path))
       .on('error', error => console.error('Watcher error:', error));
 
-    console.log(`Watching for changes in: ${config.geminiPath}`);
+    console.log(`Watching for changes in: ${pathsToWatch.join(', ')}`);
   }
 
   /**

@@ -24,6 +24,7 @@ export async function activate(
 
   // Initialize services
   const configService = new ConfigService(context);
+  i18n.setLocale(configService.getResolvedLocale());
   statusBarService = new StatusBarService();
   syncService = new SyncService(context, configService, statusBarService);
   watcherService = new WatcherService(configService, syncService);
@@ -85,10 +86,13 @@ export async function activate(
     statusBarService.getStatusBarItem(),
   );
 
+  const privateModeEnabled = configService.isPrivateModeEnabled();
+  const privateConfigured = await configService.isPrivateConfigured();
+
   // Check if first time - show setup wizard
-  if (!(await configService.isConfigured())) {
+  if (privateModeEnabled && !privateConfigured) {
     showWelcomeMessage();
-  } else {
+  } else if (privateModeEnabled && privateConfigured) {
     // Start watching if configured
     try {
       await syncService.initialize();

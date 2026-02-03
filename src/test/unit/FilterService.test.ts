@@ -2,6 +2,7 @@
  * FilterService Unit Tests
  */
 import { FilterService } from '../../services/FilterService';
+import { AntigravityProvider } from '../../providers/AntigravityProvider';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -12,11 +13,12 @@ jest.mock('fs');
 describe('FilterService', () => {
   const mockGeminiPath = '/Users/test/.gemini';
   let filterService: FilterService;
+  const defaultExcludes = new AntigravityProvider().getDefaultExcludes();
 
   beforeEach(() => {
     jest.clearAllMocks();
     (fs.existsSync as jest.Mock).mockReturnValue(false);
-    filterService = new FilterService(mockGeminiPath);
+    filterService = new FilterService(mockGeminiPath, defaultExcludes);
   });
 
   describe('shouldIgnore', () => {
@@ -70,18 +72,9 @@ describe('FilterService', () => {
     });
   });
 
-  describe('getDefaultExcludes', () => {
-    it('should return default exclude patterns', () => {
-      const excludes = FilterService.getDefaultExcludes();
-      expect(excludes).toContain('google_accounts.json');
-      expect(excludes).toContain('oauth_creds.json');
-      expect(excludes).toContain('**/browser_recordings/**');
-    });
-  });
-
   describe('custom patterns', () => {
     it('should respect custom exclude patterns', () => {
-      const customFilter = new FilterService(mockGeminiPath, ['*.tmp', 'drafts/']);
+      const customFilter = new FilterService(mockGeminiPath, [...defaultExcludes, '*.tmp', 'drafts/']);
       expect(customFilter.shouldIgnore('file.tmp')).toBe(true);
       expect(customFilter.shouldIgnore('drafts/doc.md')).toBe(true);
     });
