@@ -1,65 +1,67 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to the "antigravity-sync" extension will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.3.3] - 2026-01-22
-
-### Changed
-- Improve Auto Retry setup UX:
-  - "Copy & Quit" button: auto-close IDE after copying command
-  - Commands run in background (Windows: `start`, Linux: `nohup`)
-  - Clear terminal instructions (Win+R for Windows, Ctrl+Alt+T for Linux)
-
-
-## [0.3.2] - 2026-01-22
+## [1.1.0] - 2026-02-07
 
 ### Added
-- **Auto Retry**: Automatically click Retry buttons when AI agent encounters errors
-- CDP (Chrome DevTools Protocol) integration for Auto Retry
-- Platform-specific setup dialogs (macOS, Windows, Linux)
-- One-click Auto Retry: Check CDP → Auto setup → Show instructions
-- About Me section in README with VNLF link
+
+- **Config Schema & Runtime Validation** (`ConfigSchema.ts`): Schema-based validation for extension settings with type checking and range validation
+  - Type validation for string, number, boolean, array, object
+  - Range validation for numbers (`syncIntervalMinutes`: 1-60 minutes)
+  - Enum validation for strings (`syncMode`, `locale`)
+  - Custom `ConfigValidationError` class for detailed error messages
+
+- **SyncHooks Extensibility Interface** (`SyncHooks.ts`): Lifecycle hooks for sync operations
+  - `onBeforeSync(operation)`: Called before sync/push/pull operations
+  - `onAfterSync(operation, success, fileCount)`: Called after operations complete
+  - `onConflictResolved(conflicts)`: Called when conflicts are resolved
+  - Default no-op implementation (`DefaultSyncHooks`) for easy adoption
+
+- **Performance Optimization Documentation**: Comprehensive guide for large repositories
+  - Sync interval adjustment recommendations
+  - Exclude pattern examples (global and per-agent)
+  - Mode optimization suggestions
+  - Added to both README.md and README_VI.md
 
 ### Changed
-- Improved git sync logic with better merge conflict handling
 
-## [0.2.0] - 2026-01-15
+- **ConfigService**: Integrated runtime validation in `getConfig()`
+  - Validates settings on load
+  - Logs warnings for invalid configs without blocking extension
 
-### Added
-- Git Credential Manager integration for persistent credential storage
-- Per-repository credential support (no conflicts with multiple GitHub accounts)
-- Cross-platform credential storage (macOS Keychain, Windows Credential Manager, Linux libsecret/GNOME Keyring)
-- Automatic credential helper configuration
+- **SyncService**: Enhanced with hooks support
+  - Added `setHooks()` method for custom hook registration
+  - Tracks file count for hook callbacks
+  - Triggers hooks at appropriate lifecycle points
 
-### Changed
-- Credentials now stored via Git credential manager instead of VS Code secret storage
-- Credentials persist across all workspaces and VS Code installations
-- No need to re-enter credentials when switching workspaces
+- **Documentation**: Major updates to README files
+  - New "Performance & Optimization" section
+  - Config schema validation documentation
+  - Extensibility hooks usage examples
+  - Both English and Vietnamese versions updated
 
-### Security
-- Credentials stored in OS-native secure storage
-- Per-repository isolation prevents credential conflicts
-- Backwards compatible with existing host-level credentials
+### Technical Details
 
-## [0.1.0] - 2026-01-13
+- Config validation enforces:
+  - `syncIntervalMinutes`: 1-60 minutes range
+  - `syncMode`: enum validation (private/project/both)
+  - `locale`: enum validation (auto/en/vi)
+- Hooks are optional with default no-op implementation
+- All new code compiled successfully with TypeScript strict mode
+- Build output: extension.js (280KB), all type definitions generated
 
-### Added
-- Initial release
-- Side panel with sync status, files, and history
-- Setup wizard for easy configuration
-- Private repository validation (rejects public repos)
-- Auto-sync with configurable interval
-- Selective folder sync
-- Sensitive data exclusion (OAuth tokens, credentials)
-- Status bar indicator
-- Push/Pull/Sync commands
-- Unit tests and E2E tests
-- GitHub Actions CI/CD
+## [1.0.0] - 2026-01-XX
 
-### Security
-- PAT stored in VS Code secret storage
-- Automatic exclusion of sensitive files
-- Private repository enforcement
+### Initial Release
+
+- Multi-agent sync support (Antigravity, Cursor, Windsurf)
+- Private Git repository sync
+- Auto-sync with file watching
+- Smart merge conflict resolution
+- Project mode (read-only file tracking)
+- Localization (English/Vietnamese)
+- Status bar and side panel UI
+- Git credential helper integration

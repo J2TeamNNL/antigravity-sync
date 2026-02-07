@@ -1,134 +1,54 @@
-# Multi-Agent Sync Extension - Implementation Plan
+# Kế hoạch triển khai (public-friendly, dễ mở rộng)
 
-## Tổng quan
+Ngôn ngữ chính: Tiếng Việt, kèm thuật ngữ kỹ thuật tiếng Anh để dev bên ngoài dễ hiểu.
 
-Mở rộng extension `antigravity-sync` để hỗ trợ:
+## Mục tiêu
 
-1. **Đồng bộ đa agent**: Antigravity, Cursor, Windsurf
-2. **Hai chế độ sync**:
-   - **Private Repo Mode**: Đồng bộ settings cá nhân lên private repo
-   - **Project Repo Mode**: Đồng bộ `.agent/` vào project repo để team share
-3. **Đơn giản hóa setup**: Giảm bước cấu hình so với hiện tại
+- Đồng bộ đa agent: Antigravity, Cursor, Windsurf.
+- Hai chế độ: **private mode** (global data) và **project mode** (read-only list các thay đổi trong workspace).
+- Ưu tiên mở rộng/tuỳ biến: dễ thêm agent mới, thay đổi đường dẫn, exclude, chiến lược merge.
 
----
+## Kiến trúc & điểm mở rộng
 
-## User Review Required
+- **Agent metadata single source**: `resources/agent-mapping.json` (id, displayName, globalPaths, projectPaths, defaultExcludes, ignoreFileName). Providers đọc từ đây, fallback giá trị hardcoded nếu file thiếu.
+- **Provider registry**: `providers/index.ts` giữ danh sách AgentProvider; agent mới chỉ cần khai báo metadata + implement minimal interface.
+- **Config schema + runtime validation**: định nghĩa type Schema trong `ConfigService`, validate VS Code settings khi load; dùng schema này để sinh phần “Config Reference” (README/UI).
+- **SyncService public surface**: giữ API ổn định `sync/push/pull/getStatus/getDetailedStatus/copyFilesOnly/setGitLogger/setCountdownCallback`. Thêm hook interface (`onBeforeSync`, `onAfterSync`, `onConflictResolved`) với default no-op để plugin/telemetry về sau gắn vào.
+- **Smart Merge pluggable**: giữ chiến lược mặc định “larger/newer for binaries”; đóng gói strategy interface để có thể thêm policy khác.
+- **Project mode**: hiện tại chỉ hiển thị danh sách file thay đổi (read-only) trong Side Panel. Kịch bản mở rộng: thêm auto-sync project paths sau khi có confirm setting.
+- **Perf/scale**: watcher debounce bằng `syncIntervalMinutes`; khuyến nghị exclude thêm cho repo lớn (ghi trong mapping JSON).
+- **Logging**: GitService đã hỗ trợ UI logger; cho phép gắn sink khác (file/telemetry) qua callback.
 
-> [!IMPORTANT]
-> **Feedback đã nhận:**
->
-> - Project hiện tại có UX issues: setup phức tạp (phải reload IDE, copy command không rõ mục đích)
-> - CDP error messages không rõ ràng: "Auto-start: CDP not available. Please restart IDE with CDP flag."
-> - Cần **đơn giản hóa** setup flow để người dùng có thể cài và dùng ngay
-> - Cần **i18n support** (Tiếng Anh + Tiếng Việt) để dễ hiểu hơn
-> - Cần **error messages chi tiết** để dễ debug
+## Lộ trình thực thi
 
-> [!CAUTION]
-> **Approach mới:**
-> Không clone y nguyên project hiện tại. Sẽ **tham khảo code** nhưng **rebuild UX từ đầu** với focus:
->
-> 1. **Setup wizard đơn giản**: Không cần reload IDE, không cần copy command thủ công, tự động detect và fix CDP issues
-> 2. **Error handling tốt hơn**: Thông báo rõ ràng với suggested actions
-> 3. **Multilingual UI**: Hỗ trợ EN/VI với LocalizationService
-> 4. **Progressive disclosure**: Chỉ hiển thị options nâng cao khi cần thiết
+1. Nạp metadata từ `resources/agent-mapping.json` trong provider factory; fallback an toàn.
+2. Thêm schema + validator cho config; document mapping giữa schema ↔ README/UI.
+3. Bổ sung hook interface vào SyncService (no-op mặc định) + tài liệu cách dùng.
+4. Cập nhật README/README_VI: dẫn link mapping JSON, giải thích project mode là read-only list, giữ mermaid flow.
+5. Viết test: provider loading (JSON vs default), config validation, smart-merge strategy selection.
+6. Perf guidance: thêm ví dụ exclude/interval trong README.
 
-**Quyết định cần xác nhận:**
+## Kiểm thử & xác nhận
 
-> 1. Hỗ trợ **cả 2 mode song song**: Private Repo (settings cá nhân) + Project Repo (`.agent/` share team) - đúng không?
-> 2. Project repo mode: Tự động commit nhưng **hiển thị preview** trước để user xác nhận - đồng ý không?
-> 3. IDE paths xác nhận:
->    - **Cursor**: `~/.cursor/`, `.cursor/`, `.cursorrules`
->    - **Windsurf**: `~/.codeium/windsurf/`, `.windsurf/`
+- Unit: provider loading, config validation, smart-merge strategy.
+- Manual (F5):
+  - Configure repo (private) thành công.
+  - Project mode hiển thị đúng danh sách file (không auto-sync).
+  - Sync flow hoạt động với hooks bật/tắt không lỗi.
+- JSON lint: `node -e "JSON.parse(fs.readFileSync('resources/agent-mapping.json'))"`.
 
----
+## Quyết định thiết kế (đã chốt)
 
-## Dữ liệu đồng bộ theo Agent
+- **UI/UX**: Tối giản, không expose cấu hình hooks phức tạp.
+- **Project Mode**: Hiện tại sử dụng cơ chế manual trigger hoặc confirm đơn giản, tránh auto-sync gây nhầm lẫn.
+- **Documentation**: Maintain thủ công bảng config change trong README để dễ tùy chỉnh.
+- **Provider Architecture**: Giữ nguyên provider classes độc lập, bỏ JSON metadata approach.
 
-| Agent           | Global Path   | Project Path               | Sync Items                                                   |
-| --------------- | ------------- | -------------------------- | ------------------------------------------------------------ |
-| **Antigravity** | `~/.gemini/`  | `.agent/`, `GEMINI.md`     | brain/, knowledge/, conversations/, skills, workflows, rules |
-| **Cursor**      | `~/.cursor/`  | `.cursor/`, `.cursorrules` | settings, rules, context                                     |
-| **Windsurf**    | `~/.codeium/` | `.windsurf/`               | settings, rules, context                                     |
+## Triển khai đã hoàn thành
 
----
-
-## Proposed Changes
-
-### Core Architecture
-
-```
-src/
-├── providers/                    # [NEW] Agent providers
-│   ├── AgentProvider.ts          # Interface cho các agents
-│   ├── AntigravityProvider.ts    # Antigravity implementation
-│   ├── CursorProvider.ts         # Cursor implementation
-│   └── WindsurfProvider.ts       # Windsurf implementation
-├── services/
-│   ├── ConfigService.ts          # [MODIFY] Multi-agent config
-│   ├── SyncService.ts            # [MODIFY] Multi-mode sync
-│   ├── FilterService.ts          # [MODIFY] Per-agent filters
-│   ├── ProjectSyncService.ts     # [NEW] Project repo sync
-│   ├── LocalizationService.ts    # [NEW] i18n support
-│   └── ...existing files...
-├── locales/                      # [NEW] Translation files
-│   ├── en.json                   # English
-│   └── vi.json                   # Vietnamese
-├── ui/
-│   ├── SetupWizard.ts            # [NEW] Simplified setup wizard
-│   ├── ErrorDisplay.ts           # [NEW] Better error handling
-│   └── SidePanelProvider.ts      # [MODIFY] i18n support
-└── ...
-```
-
----
-
-## Verification Plan
-
-### Manual Testing (Local F5)
-
-> [!NOTE]
-> Để test local, bạn chạy extension trong Extension Development Host:
-
-1. **Setup**:
-
-   ```bash
-   cd /Users/hangvalong/Code/antigravity-sync
-   npm install
-   npm run build:dev
-   ```
-
-2. **Run Extension (F5)**:
-   - Mở project trong Antigravity/VSCode
-   - Nhấn `F5` để mở Extension Development Host
-   - Extension sẽ chạy trong cửa sổ mới
-
-3. **Test Cases**:
-   - [ ] Verify extension activates without errors
-   - [ ] Open Antigravity Sync panel → Should show multi-agent options
-   - [ ] Enable Cursor agent → Should detect `.cursor/` paths
-   - [ ] Configure private repo → Should clone successfully
-   - [ ] Toggle project sync → Should detect if current project has git
-   - [ ] Sync Now → Should sync selected agents only
-   - [ ] Check conflict handling → Should prompt user to resolve
-
----
-
-## Timeline dự kiến
-
-| Phase | Thời gian | Tasks                   |
-| ----- | --------- | ----------------------- |
-| 1     | 1 ngày    | Thiết kế & approval     |
-| 2     | 2-3 ngày  | Core services refactor  |
-| 3     | 1 ngày    | Configuration updates   |
-| 4     | 1-2 ngày  | UI updates              |
-| 5     | 1 ngày    | Testing & documentation |
-
-**Tổng: ~6-8 ngày**
-
----
-
-## Câu hỏi bổ sung
-
-1. Bạn có cần import/export settings giữa các agents không? (Ví dụ: copy rules từ Cursor sang Antigravity)
-2. Có cần notifications khi có conflict không?
-3. Có muốn thêm command line interface (CLI) để sync từ terminal không?
+- [x] **ConfigSchema** (`src/services/ConfigSchema.ts`): Schema definition + runtime validation với type/range/enum checks.
+- [x] **SyncHooks Interface** (`src/services/SyncHooks.ts`): Lifecycle hooks với default no-op implementation (`DefaultSyncHooks`).
+- [x] **ConfigService Integration**: Tích hợp validation vào `getConfig()`, log warning nếu invalid.
+- [x] **SyncService Hooks**: Support `setHooks()`, trigger hooks tại sync lifecycle, track file count.
+- [x] **README Updates**: Performance optimization section + config schema docs + extensibility hooks examples (EN + VI).
+- [x] **Changelog**: Tracking internal changes trong `.ai/changelog.md`.

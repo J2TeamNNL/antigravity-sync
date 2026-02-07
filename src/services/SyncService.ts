@@ -2,14 +2,15 @@
  * SyncService - Core sync orchestration
  * Provider-agnostic: works with any Git remote (GitHub, GitLab, Bitbucket, etc.)
  */
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import { ConfigService } from './ConfigService';
-import { GitService } from './GitService';
-import { FilterService } from './FilterService';
-import { StatusBarService, SyncState } from './StatusBarService';
-import { AgentId, AgentProvider, getAllProviders } from '../providers';
+import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
+import { ConfigService } from "./ConfigService";
+import { GitService } from "./GitService";
+import { FilterService } from "./FilterService";
+import { StatusBarService, SyncState } from "./StatusBarService";
+import { AgentId, AgentProvider, getAllProviders } from "../providers";
+import { SyncHooks, DefaultSyncHooks } from "./SyncHooks";
 
 export interface SyncStatus {
   syncStatus: string;
@@ -21,7 +22,7 @@ export interface SyncStatus {
 // Helper to format timestamp
 function ts(): string {
   const now = new Date();
-  return `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}]`;
+  return `[${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}]`;
 }
 
 // Default auto-sync interval: 5 minutes
@@ -38,6 +39,7 @@ export class SyncService {
   private isSyncing = false;
   private providers: AgentProvider[] = [];
   private useLegacyAntigravityLayout = false;
+  private hooks: SyncHooks = new DefaultSyncHooks();
 
   // Auto-sync timer
   private autoSyncTimer: NodeJS.Timeout | null = null;
@@ -48,7 +50,7 @@ export class SyncService {
   constructor(
     context: vscode.ExtensionContext,
     configService: ConfigService,
-    statusBar: StatusBarService
+    statusBar: StatusBarService,
   ) {
     this.context = context;
     this.configService = configService;
@@ -69,7 +71,7 @@ export class SyncService {
     const token = await this.configService.getCredentials();
 
     if (!config.repositoryUrl || !token) {
-      throw new Error('Repository or access token not configured');
+      throw new Error("Repository or access token not configured");
     }
 
     // Initialize Git service
@@ -78,7 +80,8 @@ export class SyncService {
     await this.gitService.initializeRepository(config.repositoryUrl, token);
 
     // Detect legacy Antigravity layout (root-level folders)
-    this.useLegacyAntigravityLayout = this.detectLegacyAntigravityLayout(syncRepoPath);
+    this.useLegacyAntigravityLayout =
+      this.detectLegacyAntigravityLayout(syncRepoPath);
 
     // Copy initial files
     await this.copyFilesToSyncRepo();
@@ -91,27 +94,29 @@ export class SyncService {
    * Get lock file path
    */
   private getLockFilePath(): string {
-    return path.join(this.configService.getSyncRepoPath(), '.sync.lock');
+    return path.join(this.configService.getSyncRepoPath(), ".sync.lock");
   }
 
   private detectLegacyAntigravityLayout(syncRepoPath: string): boolean {
     const legacyMarkers = [
-      'brain',
-      'knowledge',
-      'conversations',
-      'skills',
-      'workflows',
-      'rules'
+      "brain",
+      "knowledge",
+      "conversations",
+      "skills",
+      "workflows",
+      "rules",
     ];
 
-    return legacyMarkers.some(marker => fs.existsSync(path.join(syncRepoPath, marker)));
+    return legacyMarkers.some((marker) =>
+      fs.existsSync(path.join(syncRepoPath, marker)),
+    );
   }
 
   private getAgentSyncRoot(syncRepoPath: string, agentId: AgentId): string {
-    if (agentId === 'antigravity' && this.useLegacyAntigravityLayout) {
+    if (agentId === "antigravity" && this.useLegacyAntigravityLayout) {
       return syncRepoPath;
     }
-    return path.join(syncRepoPath, 'agents', agentId);
+    return path.join(syncRepoPath, "agents", agentId);
   }
 
   /**
@@ -124,14 +129,16 @@ export class SyncService {
     // Check for existing lock
     if (fs.existsSync(lockFile)) {
       try {
-        const lockTime = parseInt(fs.readFileSync(lockFile, 'utf-8'));
+        const lockTime = parseInt(fs.readFileSync(lockFile, "utf-8"));
         if (Date.now() - lockTime > LOCK_TIMEOUT_MS) {
           // Lock is stale (> 5 min), remove it
-          console.log(ts() + ' [SyncService] Stale lock detected, removing...');
+          console.log(ts() + " [SyncService] Stale lock detected, removing...");
           fs.unlinkSync(lockFile);
         } else {
           // Lock is still valid
-          console.log(ts() + ' [SyncService] Another sync in progress, skipping...');
+          console.log(
+            ts() + " [SyncService] Another sync in progress, skipping...",
+          );
           return false;
         }
       } catch {
@@ -142,12 +149,14 @@ export class SyncService {
 
     // Try to create lock atomically
     try {
-      fs.writeFileSync(lockFile, Date.now().toString(), { flag: 'wx' });
-      console.log(ts() + ' [SyncService] Lock acquired');
+      fs.writeFileSync(lockFile, Date.now().toString(), { flag: "wx" });
+      console.log(ts() + " [SyncService] Lock acquired");
       return true;
     } catch {
       // Another process got the lock first
-      console.log(ts() + ' [SyncService] Failed to acquire lock, another sync started');
+      console.log(
+        ts() + " [SyncService] Failed to acquire lock, another sync started",
+      );
       return false;
     }
   }
@@ -160,7 +169,7 @@ export class SyncService {
     try {
       if (fs.existsSync(lockFile)) {
         fs.unlinkSync(lockFile);
-        console.log(ts() + ' [SyncService] Lock released');
+        console.log(ts() + " [SyncService] Lock released");
       }
     } catch {
       // Ignore errors when releasing lock
@@ -176,7 +185,10 @@ export class SyncService {
     }
 
     if (this.isSyncing) {
-      console.log(ts() + ' [SyncService.sync] Already syncing in this window, skipping...');
+      console.log(
+        ts() +
+          " [SyncService.sync] Already syncing in this window, skipping...",
+      );
       return;
     }
 
@@ -187,24 +199,39 @@ export class SyncService {
 
     this.isSyncing = true;
     this.statusBar.update(SyncState.Syncing);
-    console.log(ts() + ' [SyncService.sync] === SYNC STARTED ===');
+    console.log(ts() + " [SyncService.sync] === SYNC STARTED ===");
+
+    let success = false;
+    let totalFiles = 0;
 
     try {
+      // Hook: onBeforeSync
+      await this.hooks.onBeforeSync?.("sync");
+
       // Pull remote changes first
-      console.log(ts() + ' [SyncService.sync] Step 1: Pulling remote changes...');
+      console.log(
+        ts() + " [SyncService.sync] Step 1: Pulling remote changes...",
+      );
       await this.pull();
 
       // Push local changes (no need to pull again, already done)
-      console.log(ts() + ' [SyncService.sync] Step 2: Pushing local changes...');
-      await this.pushWithoutPull();
+      console.log(
+        ts() + " [SyncService.sync] Step 2: Pushing local changes...",
+      );
+      totalFiles = await this.pushWithoutPull();
 
-      console.log(ts() + ' [SyncService.sync] === SYNC COMPLETE ===');
+      console.log(ts() + " [SyncService.sync] === SYNC COMPLETE ===");
       this.statusBar.update(SyncState.Synced);
+      success = true;
     } catch (error) {
-      console.log(ts() + ` [SyncService.sync] Sync failed: ${(error as Error).message}`);
+      console.log(
+        ts() + ` [SyncService.sync] Sync failed: ${(error as Error).message}`,
+      );
       this.statusBar.update(SyncState.Error);
       throw error;
     } finally {
+      // Hook: onAfterSync
+      await this.hooks.onAfterSync?.("sync", success, totalFiles);
       this.isSyncing = false;
       this.releaseLock();
     }
@@ -215,41 +242,49 @@ export class SyncService {
    */
   async push(): Promise<void> {
     if (!this.gitService) {
-      throw new Error('Sync not initialized');
+      throw new Error("Sync not initialized");
     }
 
     this.statusBar.update(SyncState.Pushing);
-    console.log('[SyncService.push] === PUSH STARTED ===');
+    console.log("[SyncService.push] === PUSH STARTED ===");
 
     try {
       // Pull first to avoid divergent branches (when called standalone)
-      console.log('[SyncService.push] Step 1: Pulling to avoid divergence...');
+      console.log("[SyncService.push] Step 1: Pulling to avoid divergence...");
       await this.gitService.pull();
 
       // Copy filtered files to sync repo
-      console.log('[SyncService.push] Step 2: Copying local files to sync repo...');
+      console.log(
+        "[SyncService.push] Step 2: Copying local files to sync repo...",
+      );
       const filesCopied = await this.copyFilesToSyncRepo();
-      console.log(`[SyncService.push] Copied ${filesCopied} files to sync repo`);
+      console.log(
+        `[SyncService.push] Copied ${filesCopied} files to sync repo`,
+      );
 
       // Stage and commit
-      console.log('[SyncService.push] Step 3: Staging and committing...');
+      console.log("[SyncService.push] Step 3: Staging and committing...");
       await this.gitService.stageAll();
       const commitHash = await this.gitService.commit(
-        `Sync: ${new Date().toISOString()}`
+        `Sync: ${new Date().toISOString()}`,
       );
 
       if (commitHash) {
-        console.log(`[SyncService.push] Step 4: Pushing commit ${commitHash.substring(0, 7)}...`);
+        console.log(
+          `[SyncService.push] Step 4: Pushing commit ${commitHash.substring(0, 7)}...`,
+        );
         await this.gitService.push();
-        console.log('[SyncService.push] Push successful!');
+        console.log("[SyncService.push] Push successful!");
       } else {
-        console.log('[SyncService.push] No changes to commit');
+        console.log("[SyncService.push] No changes to commit");
       }
 
-      console.log('[SyncService.push] === PUSH COMPLETE ===');
+      console.log("[SyncService.push] === PUSH COMPLETE ===");
       this.statusBar.update(SyncState.Synced);
     } catch (error) {
-      console.log(`[SyncService.push] Push failed: ${(error as Error).message}`);
+      console.log(
+        `[SyncService.push] Push failed: ${(error as Error).message}`,
+      );
       this.statusBar.update(SyncState.Error);
       throw error;
     }
@@ -257,31 +292,38 @@ export class SyncService {
 
   /**
    * Push without initial pull (used by sync() to avoid double pull)
+   * @returns number of files copied
    */
-  private async pushWithoutPull(): Promise<void> {
+  private async pushWithoutPull(): Promise<number> {
     if (!this.gitService) {
-      throw new Error('Sync not initialized');
+      throw new Error("Sync not initialized");
     }
 
     // Copy filtered files to sync repo
-    console.log('[SyncService.pushWithoutPull] Copying local files to sync repo...');
+    console.log(
+      "[SyncService.pushWithoutPull] Copying local files to sync repo...",
+    );
     const filesCopied = await this.copyFilesToSyncRepo();
     console.log(`[SyncService.pushWithoutPull] Copied ${filesCopied} files`);
 
     // Stage and commit
-    console.log('[SyncService.pushWithoutPull] Staging and committing...');
+    console.log("[SyncService.pushWithoutPull] Staging and committing...");
     await this.gitService.stageAll();
     const commitHash = await this.gitService.commit(
-      `Sync: ${new Date().toISOString()}`
+      `Sync: ${new Date().toISOString()}`,
     );
 
     if (commitHash) {
-      console.log(`[SyncService.pushWithoutPull] Pushing commit ${commitHash.substring(0, 7)}...`);
+      console.log(
+        `[SyncService.pushWithoutPull] Pushing commit ${commitHash.substring(0, 7)}...`,
+      );
       await this.gitService.push();
-      console.log('[SyncService.pushWithoutPull] Push successful!');
+      console.log("[SyncService.pushWithoutPull] Push successful!");
     } else {
-      console.log('[SyncService.pushWithoutPull] No changes to commit');
+      console.log("[SyncService.pushWithoutPull] No changes to commit");
     }
+
+    return filesCopied;
   }
 
   /**
@@ -289,23 +331,29 @@ export class SyncService {
    */
   async pull(): Promise<void> {
     if (!this.gitService) {
-      throw new Error('Sync not initialized');
+      throw new Error("Sync not initialized");
     }
 
     this.statusBar.update(SyncState.Pulling);
-    console.log('[SyncService.pull] === PULL STARTED ===');
+    console.log("[SyncService.pull] === PULL STARTED ===");
 
     try {
       await this.gitService.pull();
 
-      console.log('[SyncService.pull] Copying files from sync repo to Gemini folder...');
+      console.log(
+        "[SyncService.pull] Copying files from sync repo to Gemini folder...",
+      );
       const filesCopied = await this.copyFilesFromSyncRepo();
-      console.log(`[SyncService.pull] Copied ${filesCopied} files to Gemini folder`);
+      console.log(
+        `[SyncService.pull] Copied ${filesCopied} files to Gemini folder`,
+      );
 
-      console.log('[SyncService.pull] === PULL COMPLETE ===');
+      console.log("[SyncService.pull] === PULL COMPLETE ===");
       this.statusBar.update(SyncState.Synced);
     } catch (error) {
-      console.log(`[SyncService.pull] Pull failed: ${(error as Error).message}`);
+      console.log(
+        `[SyncService.pull] Pull failed: ${(error as Error).message}`,
+      );
       this.statusBar.update(SyncState.Error);
       throw error;
     }
@@ -325,10 +373,10 @@ export class SyncService {
     }
 
     return {
-      syncStatus: this.isSyncing ? 'Syncing...' : 'Ready',
+      syncStatus: this.isSyncing ? "Syncing..." : "Ready",
       lastSync,
       pendingChanges,
-      repository: config.repositoryUrl || null
+      repository: config.repositoryUrl || null,
     };
   }
 
@@ -366,7 +414,7 @@ export class SyncService {
       ahead: aheadBehind.ahead,
       behind: aheadBehind.behind,
       files: changedFiles.files,
-      totalFiles: changedFiles.total
+      totalFiles: changedFiles.total,
     };
   }
 
@@ -390,7 +438,9 @@ export class SyncService {
 
       const globalPaths = this.configService.getAgentGlobalPaths(provider.id);
       const defaultExcludes = provider.getDefaultExcludes();
-      const customExcludes = this.configService.getAgentExcludePatterns(provider.id);
+      const customExcludes = this.configService.getAgentExcludePatterns(
+        provider.id,
+      );
       const ignoreFileName = provider.getIgnoreFileName?.();
 
       for (const globalPath of globalPaths) {
@@ -414,7 +464,7 @@ export class SyncService {
         const filterService = new FilterService(
           globalPath,
           [...defaultExcludes, ...customExcludes],
-          ignoreFileName
+          ignoreFileName,
         );
         const filesToSync = await filterService.getFilesToSync();
 
@@ -471,12 +521,16 @@ export class SyncService {
         continue;
       }
 
-      const excludeNames = ['.git', '.sync.lock'];
-      if (provider.id === 'antigravity' && this.useLegacyAntigravityLayout) {
-        excludeNames.push('agents');
+      const excludeNames = [".git", ".sync.lock"];
+      if (provider.id === "antigravity" && this.useLegacyAntigravityLayout) {
+        excludeNames.push("agents");
       }
 
-      totalCopied += await this.copyDirectoryContents(sourceRoot, targetPath, excludeNames);
+      totalCopied += await this.copyDirectoryContents(
+        sourceRoot,
+        targetPath,
+        excludeNames,
+      );
     }
 
     return totalCopied;
@@ -489,7 +543,7 @@ export class SyncService {
   private async copyDirectoryContents(
     source: string,
     dest: string,
-    excludeNames: string[] = []
+    excludeNames: string[] = [],
   ): Promise<number> {
     if (!fs.existsSync(source)) {
       return 0;
@@ -507,7 +561,11 @@ export class SyncService {
       const destPath = path.join(dest, entry.name);
 
       if (entry.isDirectory()) {
-        count += await this.copyDirectoryContents(sourcePath, destPath, excludeNames);
+        count += await this.copyDirectoryContents(
+          sourcePath,
+          destPath,
+          excludeNames,
+        );
       } else {
         const destDir = path.dirname(destPath);
         if (!fs.existsSync(destDir)) {
@@ -531,10 +589,19 @@ export class SyncService {
   /**
    * Set logger callback for GitService to send logs to UI
    */
-  setGitLogger(logger: (message: string, type: 'info' | 'success' | 'error') => void): void {
+  setGitLogger(
+    logger: (message: string, type: "info" | "success" | "error") => void,
+  ): void {
     if (this.gitService) {
       this.gitService.setLogger(logger);
     }
+  }
+
+  /**
+   * Set custom hooks for sync lifecycle events
+   */
+  setHooks(hooks: SyncHooks): void {
+    this.hooks = hooks;
   }
 
   /**
@@ -554,7 +621,10 @@ export class SyncService {
 
     // Start countdown interval (every second)
     this.countdownInterval = setInterval(() => {
-      const secondsLeft = Math.max(0, Math.ceil((this.nextSyncTime - Date.now()) / 1000));
+      const secondsLeft = Math.max(
+        0,
+        Math.ceil((this.nextSyncTime - Date.now()) / 1000),
+      );
       if (this.countdownCallback) {
         this.countdownCallback(secondsLeft);
       }
@@ -566,7 +636,7 @@ export class SyncService {
         await this.sync();
         this.nextSyncTime = Date.now() + AUTO_SYNC_INTERVAL_MS;
       } catch (error) {
-        console.error('Auto-sync failed:', error);
+        console.error("Auto-sync failed:", error);
       }
     }, AUTO_SYNC_INTERVAL_MS);
   }

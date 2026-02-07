@@ -2,7 +2,7 @@
   "name": "antigravity-sync",
   "displayName": "Antigravity Auto Retry/Sync",
   "description": "Auto-sync AI context + Auto-accept/retry for AI coding agents.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "j2teamnnl",
   "author": "Nguyen Nam Long <https://www.facebook.com/j2teamnnl>",
   "icon": "resources/icons/icon.png",
@@ -23,10 +23,6 @@
   ],
   "keywords": [
     "antigravity sync",
-    "antigravity auto retry",
-    "antigravity auto retry",
-    "auto retry",
-    "auto retry",
     "cursor auto retry",
     "vscode auto retry",
     "ai agent automation"

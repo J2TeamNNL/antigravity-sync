@@ -1,67 +1,25 @@
-# Multi-Agent Sync Extension - Tasks
+# Multi-Agent Sync Extension - Tasks (VN + tech terms)
 
-## Mục tiêu
+## Trạng thái nhanh
 
-Mở rộng extension `antigravity-sync` để hỗ trợ đồng bộ cấu hình và artifacts từ nhiều AI agents (Antigravity, Cursor, Windsurf) lên private repo và/hoặc project repo.
+- ✅ Multi-agent core (providers Antigravity/Cursor/Windsurf, ConfigService per-agent, SyncService đa mode, ProjectSyncService read-only list).
+- ✅ UX/i18n (LocalizationService, SetupWizard, ErrorDisplay, EN/VI translations).
+- ✅ Docs sync-only (README/README_VI).
+- ⏳ Public-ready & extensibility (schema, hooks, JSON metadata wiring, tests).
 
----
+## Việc cần làm (ưu tiên public-ready)
 
-## Tasks
+- [x] ~~Nạp metadata từ `resources/agent-mapping.json` trong provider factory~~ (Bỏ qua - giữ provider class độc lập)
+- [x] Thêm **Config schema** + runtime validation; dùng schema để giữ README/UI đồng bộ giá trị default/range.
+- [x] Bổ sung **SyncService hooks** (`onBeforeSync`, `onAfterSync`, `onConflictResolved`) với default no-op; document contract.
+- [x] Cập nhật README/README_VI: ghi rõ Project mode là danh sách thay đổi **read-only** trong Side Panel; thêm performance guidance.
+- [ ] Test: config validation, hooks functionality (cần refactor test structure).
+- [x] Perf guidance: ví dụ exclude + chỉnh `syncIntervalMinutes` cho repo lớn (đã ghi trong README).
 
-### Phase 1: Thiết kế kiến trúc mới
+## Theo dõi các hạng mục đã xong
 
-- [x] Phân tích cấu trúc project hiện tại
-- [x] Phân tích UX issues và requirements
-- [x] Tạo implementation plan chi tiết (với UX & i18n focus)
-- [x] Tạo setup guide để test local
-- [ ] Review và approval từ user
-
-### Phase 2: UX & i18n Implementation
-
-- [x] Tạo `LocalizationService` với EN/VI support
-- [x] Tạo translation files: `en.json`, `vi.json`
-- [x] Tạo `SetupWizard` đơn giản (không cần reload IDE)
-- [x] Tạo `ErrorDisplay` với detailed messages
-- [x] Integrate i18n vào extension.ts
-- [x] Build thành công
-
-### Phase 3: Core Services & Providers
-
-- [ ] Tạo `AgentProvider` interface để hỗ trợ nhiều agents
-- [ ] Implement providers: `AntigravityProvider`, `CursorProvider`, `WindsurfProvider`
-- [ ] Refactor `ConfigService` để hỗ trợ per-agent settings
-- [ ] Refactor `SyncService` để hỗ trợ 2 modes: private repo & project repo
-- [ ] Tạo `ProjectSyncService` cho project repo mode
-- [ ] Update `FilterService` để xử lý exclude patterns cho từng agent
-
-### Phase 4: Update Configuration
-
-- [ ] Thêm settings mới vào `package.json` (enabledAgents, projectSyncEnabled, etc)
-- [ ] Hỗ trợ global rules với local override
-- [ ] Thêm locale setting
-
-### Phase 5: Update UI
-
-- [ ] Update webview panel để hiển thị multi-agent status
-- [ ] Thêm toggle cho từng agent
-- [ ] Thêm mode selector (private repo / project repo / both)
-- [ ] Thêm language selector (EN/VI)
-- [ ] Update error displays với ErrorDisplay component
-
-### Phase 6: Testing & Documentation
-
-- [ ] Viết unit tests cho LocalizationService
-- [ ] Viết unit tests cho các providers mới
-- [ ] Test multilingual UI (EN/VI)
-- [ ] Test setup wizard flow
-- [ ] Test error handling
-- [ ] Update README (EN/VI versions)
-- [ ] Test local với F5
-
----
-
-## Ghi chú
-
-- Auth: Giữ nguyên cách dùng PAT như hiện tại
-- Conflict: Cho người dùng tự resolve
-- Priority: Per-project settings, global rules có thể override
+- [x] Localization (EN/VI), SetupWizard, ErrorDisplay.
+- [x] Provider implementations + per-agent excludes.
+- [x] Project mode read-only list (UI).
+- [x] Remove CHANGELOG.md (theo yêu cầu public docs).
+- [x] Tạo file `.ai/changelog.md` (theo dõi nội bộ).

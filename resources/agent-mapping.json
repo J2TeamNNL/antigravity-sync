@@ -1,0 +1,63 @@
+[
+  {
+    "id": "antigravity",
+    "displayName": "Antigravity",
+    "globalPaths": ["~/.gemini/antigravity"],
+    "projectPaths": [".agent", "GEMINI.md"],
+    "defaultExcludes": [
+      "antigravity-browser-profile/**",
+      "**/browser_recordings/**",
+      "**/code_tracker/**",
+      "**/context_state/**",
+      "**/implicit/**",
+      "**/playground/**",
+      "browserAllowlist.txt",
+      "browserOnboardingStatus.txt",
+      "installation_id",
+      "user_settings.pb",
+      "google_accounts.json",
+      "oauth_creds.json",
+      "**/credentials.json",
+      "**/*.key",
+      "**/*.pem",
+      "**/*.webm",
+      "**/*.mp4",
+      "**/*.mov",
+      "**/*.webp",
+      "**/*.log",
+      "**/node_modules/",
+      ".DS_Store",
+      "Thumbs.db",
+      ".git/"
+    ],
+    "ignoreFileName": ".antigravityignore"
+  },
+  {
+    "id": "cursor",
+    "displayName": "Cursor",
+    "globalPaths": ["~/.cursor"],
+    "projectPaths": [".cursor", ".cursorrules"],
+    "defaultExcludes": [
+      ".DS_Store",
+      "Thumbs.db",
+      ".git/",
+      "**/node_modules/",
+      "**/*.log"
+    ],
+    "ignoreFileName": null
+  },
+  {
+    "id": "windsurf",
+    "displayName": "Windsurf",
+    "globalPaths": ["~/.codeium/windsurf"],
+    "projectPaths": [".windsurf"],
+    "defaultExcludes": [
+      ".DS_Store",
+      "Thumbs.db",
+      ".git/",
+      "**/node_modules/",
+      "**/*.log"
+    ],
+    "ignoreFileName": null
+  }
+]

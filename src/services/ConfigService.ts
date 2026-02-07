@@ -1,15 +1,16 @@
 /**
  * ConfigService - Manages extension configuration and credentials
  */
-import * as vscode from 'vscode';
-import * as os from 'os';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs';
-import { AgentId, getProvider } from '../providers';
+import * as vscode from "vscode";
+import * as os from "os";
+import * as path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
+import * as fs from "fs";
+import { AgentId, getProvider } from "../providers";
+import { validateConfig, CONFIG_SCHEMA } from "./ConfigSchema";
 
-export type SyncMode = 'private' | 'project' | 'both';
+export type SyncMode = "private" | "project" | "both";
 
 export interface AgentPathSetting {
   globalEnabled?: boolean;
@@ -46,21 +47,35 @@ export class ConfigService {
    * Get the full configuration
    */
   getConfig(): SyncConfig {
-    const config = vscode.workspace.getConfiguration('antigravitySync');
-    return {
-      repositoryUrl: config.get<string>('repositoryUrl', ''),
-      autoSync: config.get<boolean>('autoSync', true),
-      syncIntervalMinutes: config.get<number>('syncIntervalMinutes', 5),
-      excludePatterns: config.get<string[]>('excludePatterns', []),
-      geminiPath: config.get<string>('geminiPath', '') || this.getDefaultGeminiPath(),
+    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const syncConfig = {
+      repositoryUrl: config.get<string>("repositoryUrl", ""),
+      autoSync: config.get<boolean>("autoSync", true),
+      syncIntervalMinutes: config.get<number>("syncIntervalMinutes", 5),
+      excludePatterns: config.get<string[]>("excludePatterns", []),
+      geminiPath:
+        config.get<string>("geminiPath", "") || this.getDefaultGeminiPath(),
       enabledAgents: this.normalizeEnabledAgents(
-        config.get<AgentId[]>('enabledAgents', ['antigravity'])
+        config.get<AgentId[]>("enabledAgents", ["antigravity"]),
       ),
-      syncMode: config.get<SyncMode>('syncMode', 'private'),
-      locale: config.get<string>('locale', 'auto'),
-      agentPaths: config.get<AgentPathSettings>('agentPaths', {}),
-      agentExcludePatterns: config.get<AgentExcludePatterns>('agentExcludePatterns', {})
+      syncMode: config.get<SyncMode>("syncMode", "private"),
+      locale: config.get<string>("locale", "auto"),
+      agentPaths: config.get<AgentPathSettings>("agentPaths", {}),
+      agentExcludePatterns: config.get<AgentExcludePatterns>(
+        "agentExcludePatterns",
+        {},
+      ),
     };
+
+    // Runtime validation
+    try {
+      validateConfig(syncConfig);
+    } catch (error) {
+      console.error("[ConfigService] Config validation failed:", error);
+      // Log warning nhưng không throw để không block extension
+    }
+
+    return syncConfig;
   }
 
   /**
@@ -87,7 +102,7 @@ export class ConfigService {
    */
   isPrivateModeEnabled(): boolean {
     const mode = this.getSyncMode();
-    return mode === 'private' || mode === 'both';
+    return mode === "private" || mode === "both";
   }
 
   /**
@@ -95,7 +110,7 @@ export class ConfigService {
    */
   isProjectModeEnabled(): boolean {
     const mode = this.getSyncMode();
-    return mode === 'project' || mode === 'both';
+    return mode === "project" || mode === "both";
   }
 
   /**
@@ -115,10 +130,10 @@ export class ConfigService {
   /**
    * Resolve locale from settings (auto => vscode.env.language)
    */
-  getResolvedLocale(): 'en' | 'vi' {
+  getResolvedLocale(): "en" | "vi" {
     const locale = this.getLocaleSetting();
-    const rawLocale = locale === 'auto' ? (vscode.env.language || 'en') : locale;
-    return rawLocale.startsWith('vi') ? 'vi' : 'en';
+    const rawLocale = locale === "auto" ? vscode.env.language || "en" : locale;
+    return rawLocale.startsWith("vi") ? "vi" : "en";
   }
 
   /**
@@ -138,7 +153,7 @@ export class ConfigService {
     return {
       globalEnabled: settings.globalEnabled ?? true,
       projectEnabled: settings.projectEnabled ?? true,
-      globalPath: settings.globalPath
+      globalPath: settings.globalPath,
     };
   }
 
@@ -147,7 +162,7 @@ export class ConfigService {
    */
   getAgentPathSettingsMap(): AgentPathSettings {
     const settings: AgentPathSettings = {};
-    const allAgents: AgentId[] = ['antigravity', 'cursor', 'windsurf'];
+    const allAgents: AgentId[] = ["antigravity", "cursor", "windsurf"];
     for (const agentId of allAgents) {
       settings[agentId] = this.getAgentPathSettings(agentId);
     }
@@ -168,7 +183,7 @@ export class ConfigService {
       return [settings.globalPath.trim()];
     }
 
-    if (agentId === 'antigravity') {
+    if (agentId === "antigravity") {
       const config = this.getConfig();
       return [config.geminiPath || this.getDefaultGeminiPath()];
     }
@@ -186,7 +201,7 @@ export class ConfigService {
   }
 
   private normalizeEnabledAgents(agents: AgentId[]): AgentId[] {
-    const valid: AgentId[] = ['antigravity', 'cursor', 'windsurf'];
+    const valid: AgentId[] = ["antigravity", "cursor", "windsurf"];
     const set = new Set<AgentId>();
     for (const agent of agents || []) {
       if (valid.includes(agent)) {
@@ -194,7 +209,7 @@ export class ConfigService {
       }
     }
     if (set.size === 0) {
-      set.add('antigravity');
+      set.add("antigravity");
     }
     return Array.from(set);
   }
@@ -203,14 +218,14 @@ export class ConfigService {
    * Get default .gemini/antigravity path (the actual context folder)
    */
   getDefaultGeminiPath(): string {
-    return path.join(os.homedir(), '.gemini', 'antigravity');
+    return path.join(os.homedir(), ".gemini", "antigravity");
   }
 
   /**
    * Get the sync repository local path
    */
   getSyncRepoPath(): string {
-    return path.join(os.homedir(), '.gemini-sync-repo');
+    return path.join(os.homedir(), ".gemini-sync-repo");
   }
 
   /**
@@ -220,7 +235,7 @@ export class ConfigService {
   async saveCredentials(token: string): Promise<void> {
     const config = this.getConfig();
     if (!config.repositoryUrl) {
-      throw new Error('Repository URL must be set before saving credentials');
+      throw new Error("Repository URL must be set before saving credentials");
     }
     await this.storeGitCredentials(config.repositoryUrl, token);
   }
@@ -252,21 +267,21 @@ export class ConfigService {
   private async storeGitCredentials(url: string, token: string): Promise<void> {
     const parsed = this.parseGitUrl(url);
     if (!parsed) {
-      throw new Error('Invalid Git URL');
+      throw new Error("Invalid Git URL");
     }
 
     // Configure credential helper first
     await this.configureCredentialHelper();
 
-    const isGitLab = url.includes('gitlab');
-    const username = isGitLab ? 'oauth2' : 'token';
+    const isGitLab = url.includes("gitlab");
+    const username = isGitLab ? "oauth2" : "token";
 
     // Include path for per-repository credential storage
     const credentialInput = `protocol=${parsed.protocol}\nhost=${parsed.host}\npath=${parsed.path}\nusername=${username}\npassword=${token}\n`;
 
     try {
       await new Promise<void>((resolve, reject) => {
-        const child = exec('git credential approve', (error) => {
+        const child = exec("git credential approve", (error) => {
           if (error) {
             reject(error);
           } else {
@@ -278,23 +293,27 @@ export class ConfigService {
       });
     } catch {
       // Fallback: write to .git-credentials file directly (with full path for per-repo)
-      const credentialStorePath = path.join(os.homedir(), '.git-credentials');
+      const credentialStorePath = path.join(os.homedir(), ".git-credentials");
       // Store with full path: https://token:TOKEN@github.com/owner/repo.git
       const credentialLine = `${parsed.protocol}://${username}:${token}@${parsed.host}${parsed.path}\n`;
 
-      let existingContent = '';
+      let existingContent = "";
       if (fs.existsSync(credentialStorePath)) {
-        existingContent = fs.readFileSync(credentialStorePath, 'utf8');
+        existingContent = fs.readFileSync(credentialStorePath, "utf8");
         // Remove existing credential for this exact repo (not just host)
         const repoIdentifier = `@${parsed.host}${parsed.path}`;
-        const lines = existingContent.split('\n').filter(line => !line.includes(repoIdentifier));
-        existingContent = lines.join('\n');
-        if (existingContent && !existingContent.endsWith('\n')) {
-          existingContent += '\n';
+        const lines = existingContent
+          .split("\n")
+          .filter((line) => !line.includes(repoIdentifier));
+        existingContent = lines.join("\n");
+        if (existingContent && !existingContent.endsWith("\n")) {
+          existingContent += "\n";
         }
       }
 
-      fs.writeFileSync(credentialStorePath, existingContent + credentialLine, { mode: 0o600 });
+      fs.writeFileSync(credentialStorePath, existingContent + credentialLine, {
+        mode: 0o600,
+      });
     }
   }
 
@@ -309,12 +328,12 @@ export class ConfigService {
 
     // Method 1: Try using git credential fill with execSync (with path for per-repo)
     try {
-      const { execSync } = require('child_process');
+      const { execSync } = require("child_process");
       const credentialInput = `protocol=${parsed.protocol}\nhost=${parsed.host}\npath=${parsed.path}\n`;
-      const result = execSync('git credential fill', {
+      const result = execSync("git credential fill", {
         input: credentialInput,
-        encoding: 'utf8',
-        timeout: 5000
+        encoding: "utf8",
+        timeout: 5000,
       });
 
       const passwordMatch = result.match(/password=(.+)/);
@@ -326,13 +345,13 @@ export class ConfigService {
     }
 
     // Method 2: Read directly from .git-credentials file
-    const credentialStorePath = path.join(os.homedir(), '.git-credentials');
+    const credentialStorePath = path.join(os.homedir(), ".git-credentials");
     if (fs.existsSync(credentialStorePath)) {
-      const content = fs.readFileSync(credentialStorePath, 'utf8');
+      const content = fs.readFileSync(credentialStorePath, "utf8");
       const repoIdentifier = `@${parsed.host}${parsed.path}`;
 
       // First, try to find exact repo match (per-repository credential)
-      for (const line of content.split('\n')) {
+      for (const line of content.split("\n")) {
         if (line.includes(repoIdentifier)) {
           const urlMatch = line.match(/\/\/([^:]+):([^@]+)@/);
           if (urlMatch) {
@@ -342,8 +361,11 @@ export class ConfigService {
       }
 
       // Fallback: try host-only match (for backwards compatibility)
-      for (const line of content.split('\n')) {
-        if (line.includes(`@${parsed.host}`) && !line.includes(`@${parsed.host}/`)) {
+      for (const line of content.split("\n")) {
+        if (
+          line.includes(`@${parsed.host}`) &&
+          !line.includes(`@${parsed.host}/`)
+        ) {
           const urlMatch = line.match(/\/\/([^:]+):([^@]+)@/);
           if (urlMatch) {
             return urlMatch[2];
@@ -352,7 +374,7 @@ export class ConfigService {
       }
 
       // Last resort: any credential for this host
-      for (const line of content.split('\n')) {
+      for (const line of content.split("\n")) {
         if (line.includes(`@${parsed.host}`)) {
           const urlMatch = line.match(/\/\/([^:]+):([^@]+)@/);
           if (urlMatch) {
@@ -379,7 +401,7 @@ export class ConfigService {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        const child = exec('git credential reject', (error) => {
+        const child = exec("git credential reject", (error) => {
           if (error) {
             reject(error);
           } else {
@@ -391,12 +413,16 @@ export class ConfigService {
       });
     } catch {
       // Fallback: remove from .git-credentials file (only this specific repo)
-      const credentialStorePath = path.join(os.homedir(), '.git-credentials');
+      const credentialStorePath = path.join(os.homedir(), ".git-credentials");
       if (fs.existsSync(credentialStorePath)) {
-        const content = fs.readFileSync(credentialStorePath, 'utf8');
+        const content = fs.readFileSync(credentialStorePath, "utf8");
         const repoIdentifier = `@${parsed.host}${parsed.path}`;
-        const lines = content.split('\n').filter(line => !line.includes(repoIdentifier));
-        fs.writeFileSync(credentialStorePath, lines.join('\n'), { mode: 0o600 });
+        const lines = content
+          .split("\n")
+          .filter((line) => !line.includes(repoIdentifier));
+        fs.writeFileSync(credentialStorePath, lines.join("\n"), {
+          mode: 0o600,
+        });
       }
     }
   }
@@ -406,7 +432,9 @@ export class ConfigService {
    */
   private async configureCredentialHelper(): Promise<void> {
     try {
-      const { stdout } = await execAsync('git config --global credential.helper');
+      const { stdout } = await execAsync(
+        "git config --global credential.helper",
+      );
       if (stdout.trim()) {
         return; // Already configured
       }
@@ -417,17 +445,17 @@ export class ConfigService {
     const platform = process.platform;
     let helper: string;
 
-    if (platform === 'darwin') {
-      helper = 'osxkeychain';
-    } else if (platform === 'win32') {
-      helper = 'manager';
+    if (platform === "darwin") {
+      helper = "osxkeychain";
+    } else if (platform === "win32") {
+      helper = "manager";
     } else {
       // Linux - prefer libsecret (GNOME Keyring), fall back to store
       try {
-        await execAsync('which git-credential-libsecret');
-        helper = 'libsecret';
+        await execAsync("which git-credential-libsecret");
+        helper = "libsecret";
       } catch {
-        helper = 'store';
+        helper = "store";
       }
     }
 
@@ -437,39 +465,41 @@ export class ConfigService {
   /**
    * Parse Git URL to extract protocol, host, and path (for per-repository credentials)
    */
-  private parseGitUrl(url: string): { protocol: string; host: string; path: string } | null {
+  private parseGitUrl(
+    url: string,
+  ): { protocol: string; host: string; path: string } | null {
     // Handle https://host/owner/repo.git or https://host/owner/repo
-    if (url.startsWith('https://')) {
+    if (url.startsWith("https://")) {
       const match = url.match(/https:\/\/([^/]+)(\/.*)?/);
       if (match) {
-        let repoPath = match[2] || '';
+        let repoPath = match[2] || "";
         // Normalize path: ensure it starts with / and ends with .git
-        if (repoPath && !repoPath.endsWith('.git')) {
-          repoPath = repoPath.replace(/\/$/, '') + '.git';
+        if (repoPath && !repoPath.endsWith(".git")) {
+          repoPath = repoPath.replace(/\/$/, "") + ".git";
         }
-        return { protocol: 'https', host: match[1], path: repoPath };
+        return { protocol: "https", host: match[1], path: repoPath };
       }
     }
     // Handle http://host/owner/repo
-    if (url.startsWith('http://')) {
+    if (url.startsWith("http://")) {
       const match = url.match(/http:\/\/([^/]+)(\/.*)?/);
       if (match) {
-        let repoPath = match[2] || '';
-        if (repoPath && !repoPath.endsWith('.git')) {
-          repoPath = repoPath.replace(/\/$/, '') + '.git';
+        let repoPath = match[2] || "";
+        if (repoPath && !repoPath.endsWith(".git")) {
+          repoPath = repoPath.replace(/\/$/, "") + ".git";
         }
-        return { protocol: 'http', host: match[1], path: repoPath };
+        return { protocol: "http", host: match[1], path: repoPath };
       }
     }
     // Handle git@host:owner/repo.git
-    if (url.startsWith('git@')) {
+    if (url.startsWith("git@")) {
       const match = url.match(/git@([^:]+):(.+)/);
       if (match) {
-        let repoPath = '/' + match[2];
-        if (!repoPath.endsWith('.git')) {
-          repoPath = repoPath.replace(/\/$/, '') + '.git';
+        let repoPath = "/" + match[2];
+        if (!repoPath.endsWith(".git")) {
+          repoPath = repoPath.replace(/\/$/, "") + ".git";
         }
-        return { protocol: 'https', host: match[1], path: repoPath };
+        return { protocol: "https", host: match[1], path: repoPath };
       }
     }
     return null;
@@ -479,8 +509,9 @@ export class ConfigService {
    * Set repository URL
    */
   async setRepositoryUrl(url: string): Promise<void> {
-    await vscode.workspace.getConfiguration('antigravitySync')
-      .update('repositoryUrl', url, vscode.ConfigurationTarget.Global);
+    await vscode.workspace
+      .getConfiguration("antigravitySync")
+      .update("repositoryUrl", url, vscode.ConfigurationTarget.Global);
   }
 
   /**

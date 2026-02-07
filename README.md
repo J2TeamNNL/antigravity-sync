@@ -1,252 +1,221 @@
-# Antigravity Sync - Retry
+# Antigravity Sync
 
-> 🇻🇳 **Người dùng Việt Nam:** Xem [README tiếng Việt](README_VI.md) để có hướng dẫn chi tiết bằng tiếng Việt.
+**Sync AI agent context across machines. Private, Git-based, zero babysitting.**
 
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/mrd9999.antigravity-sync.svg)](https://marketplace.visualstudio.com/items?itemName=mrd9999.antigravity-sync)
-[![Open VSX](https://img.shields.io/open-vsx/v/mrd9999/antigravity-sync)](https://open-vsx.org/extension/mrd9999/antigravity-sync)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-**Auto-sync AI context + Auto-accept/retry for AI coding agents. Zero-babysitting automation.**
+> Vietnamese? See `README_VI.md`.
 
 ---
 
-## 👤 About Me
+## What it does
 
-**Dung Le** — Software Engineer from Vietnam 🇻🇳
+- Syncs Antigravity / Cursor / Windsurf data between machines via a **private Git repo**.
+- Supports modes: `private` (global agent data), `project` (workspace data preview), or `both`.
+- Runs quietly in the background with file watching + debounced auto-push.
 
-- 💼 **Facebook:** [@mrd.900s](https://www.facebook.com/mrd.900s)
-- 🐙 **GitHub:** [mrd9999](https://github.com/mrd9999)
-- 🐧 **VNLF:** [Vietnam Linux Family](https://www.facebook.com/groups/vietnamlinuxcommunity)
+## Features (sync-only)
 
----
-
-## Screenshots
-
-| Auto Retry | Sync Dashboard |
-|:-----------:|:--------------:|
-| ![Auto Retry](resources/screenshot.png) | ![Sync](docs/images/panel-preview.png) |
-
----
-
-## 🤖 Auto Retry
-
-Automatically click **Retry** buttons when AI agents encounter errors. Zero-babysitting automation!
-
-### How It Works
-
-Uses Chrome DevTools Protocol (CDP) to inject a script that monitors the IDE webview and auto-clicks approval buttons.
-
-### Quick Start
-
-1. Open **Antigravity Sync** panel in sidebar
-2. Click **"Start Auto Retry"**
-3. First time: Follow setup dialog to enable CDP
-4. **Restart IDE** (Quit + Reopen using the command shown)
-5. Click **"Start Auto Retry"** again → Active! ✅
-
-### Supported IDEs
-
-- ✅ VS Code
-- ✅ Cursor  
-- ✅ Antigravity
-- ✅ Other Electron-based IDEs
-
-### Platform Support
-
-| Platform | Status |
-|----------|--------|
-| macOS | ✅ Full support |
-| Windows | ✅ Full support |
-| Linux | ✅ Full support |
+- **Multi-agent**: Antigravity, Cursor, Windsurf.
+- **Private-first**: rejects public repos; PAT stored in Git credential helper.
+- **Auto-sync**: watches agent folders, copies filtered files to `~/.gemini-sync-repo`, commits & pushes.
+- **Smart merge**: resolves conflicts (larger/newer wins for binaries) and cleans stale git state.
+- **Status UI**: side panel + status bar; project mode shows changed files (read-only).
+- **Localization**: `auto` / `en` / `vi`.
 
 ---
-
-## 🔄 Auto Sync
-
-Sync **AI agent context** (Antigravity, Cursor, Windsurf) across machines via private Git repository.  
-Project mode can track `.agent/`, `.cursor/`, `.cursorrules`, `.windsurf/` inside your repo (manual only).
-
-**Problem solved:** When switching machines, all conversation history, Knowledge Items and brain artifacts are lost. This extension auto-syncs via Git to preserve everything.
-
----
-
-## ⚠️ IMPORTANT: Cross-Machine Sync
-
-### Workspace Path Matching
-
-Antigravity stores conversation history by **absolute workspace path**. To see conversations from the old machine on a new machine, **workspace paths MUST BE IDENTICAL**.
-
-**Example:**
-- Machine A: `/Users/dung.leviet/Documents/myproject`
-- Machine B: **MUST also be** `/Users/dung.leviet/Documents/myproject`
-
-If paths differ, conversations won't appear even after successful sync.
-
-### Solution: Symlinks
-
-Create symlinks on the new machine to match the old machine's paths:
-
-```bash
-# Linux/macOS
-sudo mkdir -p /Users/dung.leviet/Documents
-sudo ln -s /actual/path/to/project /Users/dung.leviet/Documents/myproject
-
-# Windows (Run as Administrator)
-mklink /D "C:\Users\dung.leviet\Documents\myproject" "D:\actual\path\to\project"
-```
-
-### Reload Window After Sync
-
-After pulling data from remote, you **MUST reload VS Code window** to load new conversations:
-
-```
-Cmd+Shift+P (macOS) / Ctrl+Shift+P (Windows/Linux)
-→ "Developer: Reload Window"
-```
-
-### OS Compatibility
-
-| Sync between | Works? | Notes |
-|--------------|--------|-------|
-| macOS ↔ macOS | ✅ | Use symlink |
-| Linux ↔ Linux | ✅ | Use symlink |
-| Windows ↔ Windows | ✅ | Use `mklink /D` (Admin) |
-| macOS ↔ Linux | ✅ | Use symlink |
-| macOS/Linux ↔ Windows WSL | ✅ | Symlink in WSL + VS Code Remote |
-| **macOS/Linux ↔ Windows native** | ❌ | **Path format incompatible** |
-
-> **Note:** 
-> - `knowledge/` and `brain/` work on all platforms without symlink
-> - Only `conversations/` needs workspace path matching
-
----
-
-## Features
-
-- **Multi-agent sync** — Antigravity, Cursor, Windsurf
-- **Private + project modes** — Private repo + project repo (manual)
-- **Auto-sync** — Auto sync changes to private repository
-- **Private repo only** — Validate repository must be private
-- **Sensitive data protection** — Auto-exclude OAuth tokens and credentials
-- **Side panel** — Dashboard showing sync status, files and history
-- **Setup wizard** — Step-by-step config
-
-## Installation
-
-### From Marketplace
-
-**VS Code Marketplace:**
-https://marketplace.visualstudio.com/items?itemName=mrd9999.antigravity-sync
-
-**Open VSX (for Cursor, VSCodium):**
-https://open-vsx.org/extension/mrd9999/antigravity-sync
-
-### From VS Code/Antigravity
-
-1. Open Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
-2. Search "Antigravity Sync"
-3. Install
-
-### From VSIX
-
-```bash
-# If agy is already in PATH:
-agy --install-extension antigravity-sync-0.1.1.vsix
-
-# If agy is NOT in PATH, add it first:
-# Cmd+Shift+P → "Shell Command: Install 'agy' command in PATH"
-# Then run the install command above
-```
 
 ## Quick Start
 
-1. Create **private Git repository** (GitHub, GitLab, Bitbucket)
-2. Generate **access token** with repo scope
-   - GitHub: [github.com/settings/tokens](https://github.com/settings/tokens)
-   - GitLab: Settings → Access Tokens
-   - Bitbucket: App passwords
-3. Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-4. Run `Antigravity Sync: Configure Repository`
-5. Follow setup wizard
+1. Create a **private** Git repo (GitHub/GitLab/Bitbucket…); generate a PAT with `repo` scope.
+2. In the IDE: Command Palette → `Antigravity Sync: Configure Repository`.
+3. Paste repo URL + PAT → extension initializes `~/.gemini-sync-repo` and first sync.
+4. Auto-sync runs every `syncIntervalMinutes` (default 5). Manual commands: Sync Now / Push / Pull.
+5. After pulling, reload window to load fresh conversations: `Developer: Reload Window`.
+
+---
 
 ## Configuration
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `antigravitySync.repositoryUrl` | `""` | Git repository URL (must be private) |
-| `antigravitySync.autoSync` | `true` | Auto sync changes |
-| `antigravitySync.syncIntervalMinutes` | `5` | Auto-sync interval (minutes) |
-| `antigravitySync.syncFolders` | `["knowledge", "antigravity"]` | Folders to sync |
-| `antigravitySync.excludePatterns` | `[]` | Additional exclude patterns |
-| `antigravitySync.geminiPath` | `""` | Custom path to .gemini |
-| `antigravitySync.enabledAgents` | `["antigravity"]` | Enabled agents (antigravity, cursor, windsurf) |
-| `antigravitySync.syncMode` | `"private"` | Sync mode: private, project, both |
-| `antigravitySync.locale` | `"auto"` | UI language (auto/en/vi) |
-| `antigravitySync.agentPaths` | `{}` | Per-agent path settings (global/project enabled, overrides) |
-| `antigravitySync.agentExcludePatterns` | `{}` | Per-agent exclude patterns |
+| Setting                                | Default                 | Purpose                                                   |
+| -------------------------------------- | ----------------------- | --------------------------------------------------------- |
+| `antigravitySync.repositoryUrl`        | `""`                    | Private Git repo URL. Required for sync.                  |
+| `antigravitySync.enabled`              | `true`                  | Master on/off switch.                                     |
+| `antigravitySync.autoSync`             | `true`                  | Enable background auto-sync.                              |
+| `antigravitySync.syncIntervalMinutes`  | `5`                     | Debounce window for watcher-triggered sync.               |
+| `antigravitySync.syncMode`             | `"private"`             | `private` / `project` / `both`.                           |
+| `antigravitySync.geminiPath`           | `~/.gemini/antigravity` | Override Antigravity global path.                         |
+| `antigravitySync.enabledAgents`        | `["antigravity"]`       | Agents to sync (`antigravity`, `cursor`, `windsurf`).     |
+| `antigravitySync.agentPaths`           | `{}`                    | Per-agent path overrides & enable flags (global/project). |
+| `antigravitySync.excludePatterns`      | `[]`                    | Extra global exclude globs.                               |
+| `antigravitySync.agentExcludePatterns` | `{}`                    | Extra excludes per agent (merged with defaults).          |
+| `antigravitySync.locale`               | `"auto"`                | UI language: `auto`/`en`/`vi`.                            |
 
-## Excluded Files (Default)
+Removed from scope: Auto Retry, CDP ports, auto-start retry.
 
-These files are **never synced** to protect privacy:
+---
 
-| Pattern | Reason |
-|---------|--------|
-| `google_accounts.json` | OAuth credentials |
-| `oauth_creds.json` | OAuth credentials |
-| `browser_recordings/` | Large video files |
-| `code_tracker/` | Machine-specific data |
-| `implicit/` | Workspace indexing |
-| `user_settings.pb` | User preferences |
+## Architecture (for developers)
 
-> **Note**: `conversations/*.pb` ARE synced (chat history).
+### Key services
 
-Custom patterns can be added in `.antigravityignore` at `.gemini/antigravity`.
+- **ConfigService**: reads settings, resolves locales, handles PAT storage per-repo using git credential helper.
+- **SyncService**: orchestrates push/pull; copies filtered files into sync repo; lock file to avoid multi-window races; detects legacy Antigravity layout.
+- **GitService**: git wrapper (simple-git); smart merge (larger/newer for binaries), handles stash/rebase recovery, credential helper bootstrap.
+- **FilterService**: applies built-in + user ignores (per-agent ignore file, e.g., `.antigravityignore`).
+- **WatcherService**: chokidar watcher on agent paths, debounced by `syncIntervalMinutes`, triggers push.
+- **ProjectSyncService**: shows pending workspace files (read-only) for project mode.
+- **StatusBarService**: status indicator + commands.
+- **SidePanelProvider**: webview UI; inline configure; logs; countdown timer.
+- **LocalizationService**: i18n strings for en/vi.
 
-## Commands
+### Data layout
 
-| Command | Description |
-|---------|-------------|
-| `Antigravity Sync: Configure Repository` | Setup or change repository |
-| `Antigravity Sync: Sync Now` | Manual sync (push + pull) |
-| `Antigravity Sync: Push Changes` | Push local changes only |
-| `Antigravity Sync: Pull Changes` | Pull remote changes only |
-| `Antigravity Sync: Show Status` | Show sync status |
+- Local sync repo: `~/.gemini-sync-repo`
+- Agents stored under `agents/<agent-id>/...` unless legacy Antigravity layout detected (root-level `brain/`, `knowledge/`, etc.).
+- Agent global paths (defaults):
+  - Antigravity: `~/.gemini/antigravity`
+  - Cursor: `~/.cursor`
+  - Windsurf: `~/.codeium/windsurf`
 
-## Security
+### Sync flow
 
-> ⚠️ Extension requires Git access token with repo scope.
+```mermaid
+sequenceDiagram
+    participant IDE
+    participant Watcher as WatcherService
+    participant Sync as SyncService
+    participant Git as GitService
+    participant Repo as Remote Git
 
-- Token stored in VS Code Secret Storage
-- Only works with **private repositories**
-- Sensitive files auto-excluded
-- HTTPS only
+    IDE->>Sync: Command / auto-sync trigger
+    Sync->>Watcher: (watcher already tracking changes)
+    Sync->>Sync: Copy agent files -> ~/.gemini-sync-repo (filtered)
+    Sync->>Git: stage & commit
+    Git->>Repo: push
+    Git->>Repo: pull (when needed)
+    Sync->>Agents: copy back from ~/.gemini-sync-repo to agent folders
+    Sync->>IDE: update StatusBar + panel
+```
+
+---
+
+## Security & Privacy
+
+- Only private repos are accepted (UI blocks public `git ls-remote`).
+- PAT stored via git credential helper (osxkeychain/manager/libsecret/store).
+- Default excludes per agent to avoid credentials, logs, large binaries; user overrides via `excludePatterns` or per-agent ignore file.
+
+### Default excludes (Antigravity highlights)
+
+- `antigravity-browser-profile/**`, `**/browser_recordings/**`, `**/code_tracker/**`, `**/context_state/**`, `**/implicit/**`, `**/playground/**`
+- `browserAllowlist.txt`, `browserOnboardingStatus.txt`, `installation_id`, `user_settings.pb`
+- `google_accounts.json`, `oauth_creds.json`, `**/credentials.json`, `**/*.key`, `**/*.pem`
+- `**/*.webm`, `**/*.mp4`, `**/*.mov`, `**/*.webp`
+- `**/*.log`, `**/node_modules/`, `.DS_Store`, `Thumbs.db`, `.git/`
+
+---
+
+## Limitations & Edge Cases
+
+- **Workspace path matching (Antigravity conversations)**: absolute workspace path must match across machines; use symlink if paths differ.
+- **Watcher skips `*.pb`**: conversations sync on manual push/pull; watcher-triggered auto-sync may not fire on `.pb` changes alone.
+- **Project mode**: currently shows changed files only; no auto-sync for project paths.
+- **Locking**: `.sync.lock` prevents concurrent sync; stale locks cleared after 5 minutes.
+- **Legacy layout**: if repo already has `brain/`, `knowledge/`, etc., Antigravity uses root layout instead of `agents/antigravity/`.
+
+---
+
+## Performance & Optimization
+
+### Large Repositories
+
+If your repo contains many files or large files, consider these adjustments:
+
+1. **Increase sync interval**: Change `syncIntervalMinutes` from 5 to 10-15 minutes to reduce overhead.
+
+   ```json
+   "antigravitySync.syncIntervalMinutes": 10
+   ```
+
+2. **Add exclude patterns**: Filter out unnecessary files:
+
+   ```json
+   "antigravitySync.excludePatterns": [
+     "**/*.tmp",
+     "**/cache/**",
+     "**/large-files/**"
+   ]
+   ```
+
+3. **Per-agent excludes**: Optimize exclusions for each agent:
+
+   ```json
+   "antigravitySync.agentExcludePatterns": {
+     "antigravity": ["**/temp/**", "**/*.bak"],
+     "cursor": ["**/cache/**"]
+   }
+   ```
+
+4. **Disable unused modes**: Keep only `private` mode if you don't use project tracking:
+   ```json
+   "antigravitySync.syncMode": "private"
+   ```
+
+### Config Schema & Validation
+
+Extension includes built-in schema validation to ensure correct configuration:
+
+- `syncIntervalMinutes`: 1-60 minutes
+- `syncMode`: `private` | `project` | `both`
+- `locale`: `auto` | `en` | `vi`
+
+Invalid configs will log warnings but won't block the extension.
+
+### Extensibility Hooks
+
+Developers can hook into sync lifecycle events for telemetry/plugins:
+
+```typescript
+syncService.setHooks({
+  onBeforeSync: async (operation) => {
+    console.log(`Starting ${operation}`);
+  },
+  onAfterSync: async (operation, success, fileCount) => {
+    console.log(
+      `${operation} completed: ${fileCount} files, success=${success}`,
+    );
+  },
+  onConflictResolved: async (conflicts) => {
+    console.log(`Resolved ${conflicts.length} conflicts`);
+  },
+});
+```
+
+---
+
+## Troubleshooting
+
+- **Repo rejected as public**: make repo private, then reconnect.
+- **401/403**: regenerate PAT with `repo` scope; rerun Configure.
+- **Conflicts**: rerun Sync; smart merge resolves binaries by larger/newer; check logs in panel.
+- **Missing conversations on new machine**: align workspace path (symlink) then pull + reload window.
+- **Network issues**: retry Sync Now; check git connectivity.
+
+---
 
 ## Development
 
 ```bash
-git clone https://github.com/mrd9999/antigravity-sync.git
-cd antigravity-sync
 yarn install
 yarn build
 yarn test
-
-# Run extension (dev mode)
-agy . && press F5
+# Dev host
+yarn watch   # rebuild webview/extension
+yarn test:coverage
+yarn package
 ```
-
-## Contributing
-
-- [Report bugs](https://github.com/mrd9999/antigravity-sync/issues/new?template=bug_report.md)
-- [Request features](https://github.com/mrd9999/antigravity-sync/issues/new?template=feature_request.md)
-- [Improve docs](https://github.com/mrd9999/antigravity-sync/pulls)
-
-## License
-
-MIT © [Dung Le](https://www.facebook.com/mrd.900s)
 
 ---
 
-## Contact
+## License
 
-- Facebook: [@mrd.900s](https://www.facebook.com/mrd.900s)
-- GitHub: [Issues](https://github.com/mrd9999/antigravity-sync/issues)
+MIT © Contributors
