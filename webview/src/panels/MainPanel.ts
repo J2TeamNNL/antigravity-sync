@@ -6,7 +6,11 @@ import { vscode } from '../index';
 let uiStrings: Record<string, string> = {};
 
 function t(key: string, fallback: string): string {
-  return uiStrings[key] || fallback;
+  const value = uiStrings[key];
+  if (!value || value === key) {
+    return fallback;
+  }
+  return value;
 }
 
 export class MainPanel {

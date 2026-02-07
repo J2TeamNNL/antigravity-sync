@@ -37,7 +37,7 @@ export class LocalizationService {
    */
   private loadTranslations(): void {
     try {
-      const localesPath = path.join(__dirname, "..", "locales");
+      const localesPath = this.getLocalesPath();
       const translationFile = path.join(localesPath, `${this.locale}.json`);
 
       if (fs.existsSync(translationFile)) {
@@ -88,6 +88,27 @@ export class LocalizationService {
     return translation;
   }
 
+
+  private getLocalesPath(): string {
+    const candidates: string[] = [];
+
+    const extension = vscode.extensions.getExtension("j2teamnnl.ai-context-sync");
+    if (extension) {
+      candidates.push(path.join(extension.extensionPath, "dist", "locales"));
+    }
+
+    candidates.push(path.join(__dirname, "locales"));
+    candidates.push(path.join(__dirname, "..", "locales"));
+    candidates.push(path.join(__dirname, "..", "dist", "locales"));
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    return candidates[0] || path.join(__dirname, "locales");
+  }
   /**
    * Get current locale
    */
