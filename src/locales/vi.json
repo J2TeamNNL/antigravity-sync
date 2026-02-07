@@ -24,12 +24,6 @@
   "error.gitError": "Đã xảy ra lỗi Git",
   "error.configError": "Lỗi cấu hình",
 
-  "error.cdp.title": "CDP không khả dụng",
-  "error.cdp.details": "Chrome DevTools Protocol cần thiết cho tính năng Auto Retry.",
-  "error.cdp.action1": "Khởi động lại IDE với CDP flag: --remote-debugging-port=31905",
-  "error.cdp.action2": "Hoặc tắt Auto Retry trong settings",
-  "error.cdp.showInstructions": "Hiển thị hướng dẫn",
-  "error.cdp.disableRetry": "Tắt Auto Retry",
 
   "sync.syncing": "Đang đồng bộ...",
   "sync.synced": "Đã đồng bộ",
@@ -66,7 +60,6 @@
   "error.details": "Chi tiết: {0}",
   "error.suggestedActions": "Hành động đề xuất",
   "error.viewDocs": "Xem tài liệu",
-  "error.cdp.disabled": "Auto Retry đã được tắt",
   "error.auth.checkToken": "Kiểm tra access token của bạn còn hợp lệ",
   "error.auth.regenerateToken": "Tạo lại access token mới",
   "error.network.checkConnection": "Kiểm tra kết nối internet của bạn",
@@ -91,8 +84,8 @@
   "panel.config.repoLabel": "URL Repository",
   "panel.config.patLabel": "Access Token",
   "panel.config.patHint": "Token cần quyền đọc/ghi repo",
-  "panel.config.connect": "Kết nối Repository",
-  "panel.config.errorMissing": "Vui lòng nhập đầy đủ hai trường",
+  "panel.config.connect": "Kết nối & đồng bộ",
+  "panel.config.errorMissing": "Vui lòng nhập access token",
 
   "panel.dashboard.syncEnabled": "Bật đồng bộ",
   "panel.repo.title": "Repository",

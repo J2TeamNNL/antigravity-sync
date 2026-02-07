@@ -39,13 +39,9 @@ export class MainPanel {
         <section id="locale-section" class="locale-section">
           <div class="section-header">
             <span class="codicon codicon-gear"></span>
-            <h3 id="locale-title">Language</h3>
+            <h3 id="locale-title" style="display:none">Language</h3>
           </div>
-          <vscode-dropdown id="locale-select" class="full-width">
-            <vscode-option value="auto" id="locale-auto">Auto</vscode-option>
-            <vscode-option value="en" id="locale-en">English</vscode-option>
-            <vscode-option value="vi" id="locale-vi">Vietnamese</vscode-option>
-          </vscode-dropdown>
+          <div style="display:none" id="locale-select"></div>
         </section>
 
         <section id="agents-section" class="agents-section">
@@ -68,14 +64,14 @@ export class MainPanel {
           <p class="description" id="config-desc">Sync your AI context to a private Git repository.</p>
           
           <div class="form-group">
-            <label for="repo-url-input" id="repo-url-label">Repository URL</label>
-            <vscode-text-field id="repo-url-input" placeholder="https://host/user/repo" class="full-width"></vscode-text-field>
-          </div>
-          
-          <div class="form-group">
             <label for="pat-input" id="pat-label">Access Token</label>
-            <vscode-text-field id="pat-input" type="password" placeholder="Token with repo access" class="full-width"></vscode-text-field>
+            <vscode-text-field id="pat-input" type="password" placeholder="GitHub/GitLab PAT with repo scope" class="full-width"></vscode-text-field>
             <span class="hint" id="pat-hint">Token needs repository read/write access</span>
+          </div>
+
+          <div class="form-group">
+            <label for="repo-path-input" id="repo-url-label">Repository (optional)</label>
+            <vscode-text-field id="repo-path-input" placeholder="owner/name (default: &lt;you&gt;/ai-context-sync)" class="full-width"></vscode-text-field>
           </div>
           
           <vscode-button id="btn-save-config" class="full-width" style="display: flex; justify-content: center; text-align: center;">
@@ -84,36 +80,6 @@ export class MainPanel {
           </vscode-button>
           
           <div id="config-error" class="error-box" style="display: none;"></div>
-        </section>
-
-        <!-- Auto Retry Section (CDP-based) -->
-        <section class="auto-retry-section" id="auto-retry-section">
-          <vscode-divider></vscode-divider>
-          <div class="section-header">
-            <span class="codicon codicon-zap"></span>
-            <span class="section-title">Auto Retry</span>
-            <span id="auto-retry-status" class="status-badge" style="margin-left: auto; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground);">OFF</span>
-          </div>
-          <p class="description" style="font-size: 11px; opacity: 0.8; margin: 0 0 8px 0;">
-            Auto-click Retry buttons when AI agent encounters errors
-          </p>
-          
-          <!-- Auto Start Checkbox -->
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <vscode-checkbox id="chk-auto-start">Auto-start on launch</vscode-checkbox>
-          </div>
-          
-          <!-- Toggle Button (shows Start or Stop based on state) -->
-          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-            <vscode-button id="btn-toggle-auto-retry" appearance="primary" style="flex: 1;">
-              <span class="codicon codicon-play" id="btn-toggle-icon"></span>
-              <span id="btn-toggle-text">Start</span>
-            </vscode-button>
-          </div>
-          
-          <div id="auto-retry-log" class="log-output" style="margin-top: 8px; max-height: 120px;">
-            <div class="log-empty">Click Start to enable auto-retry</div>
-          </div>
         </section>
 
         <!-- Main Dashboard (shown when configured) -->
@@ -258,7 +224,7 @@ export class MainPanel {
   private attachEventListeners(): void {
     // Save config button
     document.getElementById('btn-save-config')?.addEventListener('click', () => {
-      const repoInput = document.getElementById('repo-url-input') as HTMLInputElement;
+      const repoInput = document.getElementById('repo-path-input') as HTMLInputElement;
       const patInput = document.getElementById('pat-input') as HTMLInputElement;
 
       // Show loading state
@@ -266,8 +232,8 @@ export class MainPanel {
 
       vscode.postMessage({
         type: 'saveConfig',
-        repoUrl: repoInput?.value || '',
-        pat: patInput?.value || ''
+        token: patInput?.value || '',
+        repoPath: repoInput?.value || ''
       });
     });
 
@@ -282,15 +248,6 @@ export class MainPanel {
       vscode.postMessage({
         type: 'setSyncMode',
         mode: target.value
-      });
-    });
-
-    // Locale dropdown
-    document.getElementById('locale-select')?.addEventListener('change', (e) => {
-      const target = e.target as HTMLSelectElement;
-      vscode.postMessage({
-        type: 'setLocale',
-        locale: target.value
       });
     });
 
@@ -352,25 +309,6 @@ export class MainPanel {
       clearLog();
     });
 
-    // Auto Retry - Toggle button
-    document.getElementById('btn-toggle-auto-retry')?.addEventListener('click', () => {
-      const statusBadge = document.getElementById('auto-retry-status');
-      const isRunning = statusBadge?.textContent === 'ON';
-      if (isRunning) {
-        vscode.postMessage({ type: 'stopAutoRetry' });
-      } else {
-        vscode.postMessage({ type: 'startAutoRetry' });
-      }
-    });
-
-    // Auto Retry - Auto-start checkbox
-    document.getElementById('chk-auto-start')?.addEventListener('change', (e) => {
-      const checkbox = e.target as HTMLInputElement;
-      vscode.postMessage({ type: 'setAutoStart', data: { enabled: checkbox.checked } });
-    });
-
-    // Request initial auto-retry status and auto-start setting
-    vscode.postMessage({ type: 'getAutoRetryStatus' });
   }
 }
 
@@ -381,7 +319,6 @@ export function showConfigured(data: {
   repoUrl?: string;
   syncMode: 'private' | 'project' | 'both';
   enabledAgents: string[];
-  agentPathSettings: Record<string, { globalEnabled?: boolean; projectEnabled?: boolean }>;
   agents: { id: string; name: string; hasGlobal: boolean; hasProject: boolean }[];
   locale: string;
   strings: Record<string, string>;
@@ -403,9 +340,8 @@ export function showConfigured(data: {
   setConnectLoading(false);
 
   updateStrings(data.strings);
-  updateSyncModeSelect(data.syncMode);
-  updateLocaleSelect(data.locale);
-  renderAgentList(data.agents, data.enabledAgents, data.agentPathSettings);
+  updateSyncModeSelect(data.syncMode, data.projectStatus);
+  renderAgentList(data.agents, data.enabledAgents);
 
   if (configSection) {
     const showConfig = (data.syncMode === 'private' || data.syncMode === 'both') && !data.privateConfigured;
@@ -448,20 +384,15 @@ function applyStrings(): void {
   setText('sync-mode-project', t('panel.mode.project', 'Project'));
   setText('sync-mode-both', t('panel.mode.both', 'Both'));
 
-  setText('locale-title', t('panel.locale.title', 'Language'));
-  setText('locale-auto', t('panel.locale.auto', 'Auto'));
-  setText('locale-en', t('panel.locale.en', 'English'));
-  setText('locale-vi', t('panel.locale.vi', 'Vietnamese'));
-
   setText('agents-title', t('panel.agents.title', 'Agents'));
   setText('agents-desc', t('panel.agents.desc', 'Enable agents and choose global or project paths.'));
 
   setText('config-title', t('panel.config.title', 'Setup'));
   setText('config-desc', t('panel.config.desc', 'Sync your AI context to a private Git repository.'));
-  setText('repo-url-label', t('panel.config.repoLabel', 'Repository URL'));
+  setText('repo-url-label', t('panel.config.repoLabel', 'Repository (optional)'));
   setText('pat-label', t('panel.config.patLabel', 'Access Token'));
   setText('pat-hint', t('panel.config.patHint', 'Token needs repository read/write access'));
-  setText('btn-connect-text', t('panel.config.connect', 'Connect Repository'));
+  setText('btn-connect-text', t('panel.config.connect', 'Connect & Sync'));
 
   setText('push-label', t('panel.dashboard.push', 'Push'));
   setText('pull-label', t('panel.dashboard.pull', 'Pull'));
@@ -482,24 +413,29 @@ function applyStrings(): void {
   setText('project-files-empty', t('panel.project.empty', 'No changes detected'));
 }
 
-function updateSyncModeSelect(mode: 'private' | 'project' | 'both'): void {
+function updateSyncModeSelect(
+  mode: 'private' | 'project' | 'both',
+  projectStatus?: { hasWorkspace: boolean; isGitRepo: boolean },
+): void {
   const select = document.getElementById('sync-mode-select') as HTMLSelectElement;
   if (select) {
     select.value = mode;
-  }
-}
-
-function updateLocaleSelect(locale: string): void {
-  const select = document.getElementById('locale-select') as HTMLSelectElement;
-  if (select) {
-    select.value = locale;
+    const projectOption = select.querySelector('#sync-mode-project') as HTMLOptionElement;
+    if (projectOption && projectStatus) {
+      const disabled = !projectStatus.hasWorkspace || !projectStatus.isGitRepo;
+      projectOption.disabled = disabled;
+      projectOption.title = disabled ? 'Open a Git workspace to enable project sync' : '';
+      if (disabled && select.value === 'project') {
+        select.value = 'private';
+        vscode.postMessage({ type: 'setSyncMode', mode: 'private' });
+      }
+    }
   }
 }
 
 function renderAgentList(
   agents: { id: string; name: string; hasGlobal: boolean; hasProject: boolean }[],
   enabledAgents: string[],
-  agentPathSettings: Record<string, { globalEnabled?: boolean; projectEnabled?: boolean }>,
 ): void {
   const container = document.getElementById('agent-list');
   if (!container) return;
@@ -528,56 +464,6 @@ function renderAgentList(
 
     header.appendChild(agentToggle);
     wrapper.appendChild(header);
-
-    const pathRow = document.createElement('div');
-    pathRow.className = 'agent-paths';
-
-    const pathSettings = agentPathSettings[agent.id] || {};
-    const isEnabled = enabledAgents.includes(agent.id);
-
-    if (agent.hasGlobal) {
-      const globalLabel = document.createElement('label');
-      globalLabel.className = 'agent-path-item';
-      const globalToggle = document.createElement('vscode-checkbox') as any;
-      globalToggle.id = `agent-${agent.id}-global`;
-      globalToggle.checked = pathSettings.globalEnabled ?? true;
-      globalToggle.disabled = !isEnabled;
-      globalToggle.textContent = t('panel.agents.global', 'Global');
-      globalToggle.addEventListener('change', (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        vscode.postMessage({
-          type: 'toggleAgentPath',
-          agentId: agent.id,
-          pathType: 'global',
-          enabled: target.checked
-        });
-      });
-      globalLabel.appendChild(globalToggle);
-      pathRow.appendChild(globalLabel);
-    }
-
-    if (agent.hasProject) {
-      const projectLabel = document.createElement('label');
-      projectLabel.className = 'agent-path-item';
-      const projectToggle = document.createElement('vscode-checkbox') as any;
-      projectToggle.id = `agent-${agent.id}-project`;
-      projectToggle.checked = pathSettings.projectEnabled ?? true;
-      projectToggle.disabled = !isEnabled;
-      projectToggle.textContent = t('panel.agents.project', 'Project');
-      projectToggle.addEventListener('change', (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        vscode.postMessage({
-          type: 'toggleAgentPath',
-          agentId: agent.id,
-          pathType: 'project',
-          enabled: target.checked
-        });
-      });
-      projectLabel.appendChild(projectToggle);
-      pathRow.appendChild(projectLabel);
-    }
-
-    wrapper.appendChild(pathRow);
     container.appendChild(wrapper);
   });
 }
@@ -819,106 +705,5 @@ export function updateCountdown(seconds: number): void {
       const secs = seconds % 60;
       countdownEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
     }
-  }
-}
-
-export function updateAutoRetryStatus(running: boolean, retryCount: number, connectionCount?: number): void {
-  const statusBadge = document.getElementById('auto-retry-status');
-  const toggleBtn = document.getElementById('btn-toggle-auto-retry');
-  const toggleIcon = document.getElementById('btn-toggle-icon');
-  const toggleText = document.getElementById('btn-toggle-text');
-
-  // Update status badge
-  if (statusBadge) {
-    statusBadge.textContent = running ? 'ON' : 'OFF';
-    statusBadge.style.background = running
-      ? 'var(--vscode-debugIcon-startForeground)'
-      : 'var(--vscode-badge-background)';
-    statusBadge.style.color = running
-      ? 'white'
-      : 'var(--vscode-badge-foreground)';
-  }
-
-  // Update toggle button
-  if (toggleBtn && toggleIcon && toggleText) {
-    if (running) {
-      toggleBtn.setAttribute('appearance', 'secondary');
-      toggleIcon.className = 'codicon codicon-debug-stop';
-      toggleText.textContent = 'Stop';
-    } else {
-      toggleBtn.setAttribute('appearance', 'primary');
-      toggleIcon.className = 'codicon codicon-play';
-      toggleText.textContent = 'Start';
-    }
-  }
-}
-
-export function updateAutoStartCheckbox(enabled: boolean): void {
-  const checkbox = document.getElementById('chk-auto-start') as HTMLInputElement;
-  if (checkbox) {
-    checkbox.checked = enabled;
-  }
-}
-
-export function updateCDPStatus(available: boolean, hasFlag: boolean, port: number): void {
-  const cdpIcon = document.getElementById('cdp-status-icon');
-  const cdpText = document.getElementById('cdp-status-text');
-  const setupBtn = document.getElementById('btn-setup-cdp');
-  const logOutput = document.getElementById('auto-retry-log');
-
-  if (cdpIcon && cdpText) {
-    if (available) {
-      cdpIcon.className = 'codicon codicon-check';
-      cdpIcon.style.color = 'var(--vscode-debugIcon-startForeground)';
-      cdpText.textContent = `CDP: Connected (port ${port})`;
-    } else if (hasFlag) {
-      cdpIcon.className = 'codicon codicon-warning';
-      cdpIcon.style.color = 'var(--vscode-debugIcon-pauseForeground)';
-      cdpText.textContent = 'CDP: Has flag but not responding';
-    } else {
-      cdpIcon.className = 'codicon codicon-circle-outline';
-      cdpIcon.style.color = 'var(--vscode-debugIcon-disconnectForeground)';
-      cdpText.textContent = `CDP: Not connected (port ${port})`;
-    }
-  }
-
-  // Update setup button visibility
-  if (setupBtn) {
-    setupBtn.style.display = available ? 'none' : 'inline-flex';
-  }
-
-  // Update log hint
-  if (logOutput && !available) {
-    const empty = logOutput.querySelector('.log-empty');
-    if (empty) {
-      empty.textContent = hasFlag
-        ? 'CDP not responding. Try restarting IDE.'
-        : `Click "Setup CDP" then restart IDE with --remote-debugging-port=${port}`;
-    }
-  }
-}
-
-export function appendAutoRetryLog(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
-  const logOutput = document.getElementById('auto-retry-log');
-  if (!logOutput) return;
-
-  // Remove empty message
-  const empty = logOutput.querySelector('.log-empty');
-  if (empty) empty.remove();
-
-  // Create new log line
-  const line = document.createElement('div');
-  line.className = `log-line log-${type}`;
-  line.textContent = message;
-
-  // Add to bottom
-  logOutput.appendChild(line);
-
-  // Auto-scroll to bottom
-  logOutput.scrollTop = logOutput.scrollHeight;
-
-  // Keep only last 20 lines
-  while (logOutput.children.length > 20) {
-    logOutput.firstChild?.remove();
   }
 }

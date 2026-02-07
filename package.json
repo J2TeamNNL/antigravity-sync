@@ -154,16 +154,6 @@
           ],
           "description": "Sync mode: private repo, project repo, or both"
         },
-        "aiContextSync.locale": {
-          "type": "string",
-          "default": "auto",
-          "enum": [
-            "auto",
-            "en",
-            "vi"
-          ],
-          "description": "UI language (auto, English, Vietnamese)"
-        },
         "aiContextSync.agentPaths": {
           "type": "object",
           "default": {},
@@ -173,51 +163,6 @@
           "type": "object",
           "default": {},
           "description": "Per-agent exclude patterns (merged with global excludes)"
-        },
-        "aiContextSync.autoRetryEnabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable auto-accept for AI agent buttons (requires CDP setup)"
-        },
-        "aiContextSync.autoStartRetry": {
-          "type": "boolean",
-          "default": false,
-          "description": "Automatically start Auto Retry when IDE launches"
-        },
-        "aiContextSync.cdpPort": {
-          "type": "number",
-          "default": 31905,
-          "minimum": 1024,
-          "maximum": 65535,
-          "description": "CDP remote debugging port for auto-accept"
-        },
-        "aiContextSync.cdpPortRange": {
-          "type": "number",
-          "default": 3,
-          "minimum": 0,
-          "maximum": 10,
-          "description": "Port range to scan (port ± range)"
-        },
-        "aiContextSync.autoRetryInterval": {
-          "type": "number",
-          "default": 3,
-          "minimum": 1,
-          "maximum": 30,
-          "description": "Interval in seconds between retry checks"
-        },
-        "aiContextSync.autoRetryMaxRetries": {
-          "type": "number",
-          "default": 50,
-          "minimum": 1,
-          "maximum": 500,
-          "description": "Maximum number of auto-retries before stopping"
-        },
-        "aiContextSync.autoRetryCooldown": {
-          "type": "number",
-          "default": 5,
-          "minimum": 1,
-          "maximum": 60,
-          "description": "Cooldown in seconds after clicking retry button"
         }
       }
     }

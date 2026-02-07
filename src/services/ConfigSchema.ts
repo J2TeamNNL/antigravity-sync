@@ -59,13 +59,6 @@ export const CONFIG_SCHEMA: ConfigSchemaField[] = [
       "Chế độ sync: private (global data), project (workspace), hoặc both",
   },
   {
-    key: "locale",
-    type: "string",
-    default: "auto",
-    enum: ["auto", "en", "vi"],
-    description: "Ngôn ngữ cho extension UI",
-  },
-  {
     key: "agentPaths",
     type: "object",
     default: {},

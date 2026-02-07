@@ -103,20 +103,6 @@ export async function activate(
     }
   }
 
-  // Auto-start Auto Retry if enabled
-  const config = vscode.workspace.getConfiguration("aiContextSync");
-  if (config.get("autoStartRetry", false)) {
-    // Delay auto-start to let UI initialize
-    setTimeout(async () => {
-      try {
-        console.log("[Antigravity] Auto-starting Auto Retry...");
-        await sidePanelProvider?.tryAutoStartRetry();
-      } catch (error) {
-        console.error("[Antigravity] Auto-start failed:", error);
-      }
-    }, 3000);
-  }
-
   console.log("AI Context Sync activated!");
 }
 

@@ -21,7 +21,7 @@ provideVSCodeDesignSystem().register(
   vsCodeOption()
 );
 
-import { MainPanel, showConfigured, updateStatus, showError, showConfigError, appendLog, clearLog, updateGitStatus, setRefreshLoading, updateCountdown, updateAutoRetryStatus, appendAutoRetryLog, updateCDPStatus, updateAutoStartCheckbox, updateProjectStatus } from './panels/MainPanel';
+import { MainPanel, showConfigured, updateStatus, showError, showConfigError, appendLog, clearLog, updateGitStatus, updateCountdown, updateProjectStatus } from './panels/MainPanel';
 
 // Declare vscode API type
 interface VsCodeApi {
@@ -52,12 +52,6 @@ interface AgentMeta {
   hasProject: boolean;
 }
 
-interface AgentPathSetting {
-  globalEnabled?: boolean;
-  projectEnabled?: boolean;
-  globalPath?: string;
-}
-
 interface ProjectStatus {
   hasWorkspace: boolean;
   isGitRepo: boolean;
@@ -75,7 +69,6 @@ interface ConfiguredMessage {
     repoUrl?: string;
     syncMode: 'private' | 'project' | 'both';
     enabledAgents: string[];
-    agentPathSettings: Record<string, AgentPathSetting>;
     agents: AgentMeta[];
     locale: string;
     strings: Record<string, string>;
@@ -123,27 +116,7 @@ interface CountdownMessage {
   data: { seconds: number };
 }
 
-interface AutoRetryStatusMessage {
-  type: 'autoRetryStatus';
-  data: { running: boolean; retryCount: number; connectionCount?: number };
-}
-
-interface AutoRetryLogMessage {
-  type: 'autoRetryLog';
-  data: { message: string; logType: 'success' | 'error' | 'info' };
-}
-
-interface CDPStatusMessage {
-  type: 'cdpStatus';
-  data: { available: boolean; hasFlag: boolean; port: number };
-}
-
-interface AutoStartSettingMessage {
-  type: 'autoStartSetting';
-  data: { enabled: boolean };
-}
-
-type ExtensionMessage = ConfiguredMessage | StatusMessage | ErrorMessage | ConfigErrorMessage | LogMessage | ClearLogMessage | GitStatusMessage | ProjectStatusMessage | CountdownMessage | AutoRetryStatusMessage | AutoRetryLogMessage | CDPStatusMessage | AutoStartSettingMessage;
+type ExtensionMessage = ConfiguredMessage | StatusMessage | ErrorMessage | ConfigErrorMessage | LogMessage | ClearLogMessage | GitStatusMessage | ProjectStatusMessage | CountdownMessage;
 
 window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
   const message = event.data;
@@ -175,18 +148,6 @@ window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
       break;
     case 'countdown':
       updateCountdown(message.data.seconds);
-      break;
-    case 'autoRetryStatus':
-      updateAutoRetryStatus(message.data.running, message.data.retryCount, message.data.connectionCount);
-      break;
-    case 'autoRetryLog':
-      appendAutoRetryLog(message.data.message, message.data.logType);
-      break;
-    case 'cdpStatus':
-      updateCDPStatus(message.data.available, message.data.hasFlag, message.data.port);
-      break;
-    case 'autoStartSetting':
-      updateAutoStartCheckbox(message.data.enabled);
       break;
   }
 });

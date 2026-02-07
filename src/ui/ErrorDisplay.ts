@@ -8,7 +8,6 @@ export type ErrorType =
   | "auth"
   | "network"
   | "git"
-  | "cdp"
   | "config"
   | "unknown";
 
@@ -69,69 +68,6 @@ export class ErrorDisplay {
   }
 
   /**
-   * Show CDP error with specific instructions
-   */
-  public static async showCDPError(): Promise<void> {
-    const message = i18n.t("error.cdp.title");
-    const details = i18n.t("error.cdp.details");
-
-    const actions = [
-      i18n.t("error.cdp.showInstructions"),
-      i18n.t("error.cdp.disableRetry"),
-      i18n.t("ui.close"),
-    ];
-
-    const selection = await vscode.window.showErrorMessage(
-      `❌ ${message}\n\n${details}\n\n${i18n.t("error.suggestedActions")}:\n1. ${i18n.t("error.cdp.action1")}\n2. ${i18n.t("error.cdp.action2")}`,
-      { modal: true },
-      ...actions,
-    );
-
-    if (selection === i18n.t("error.cdp.showInstructions")) {
-      // Show CDP setup instructions
-      ErrorDisplay.showCDPInstructions();
-    } else if (selection === i18n.t("error.cdp.disableRetry")) {
-      // Disable auto retry
-      await vscode.workspace
-        .getConfiguration("aiContextSync")
-        .update("autoRetryEnabled", false, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(i18n.t("error.cdp.disabled"));
-    }
-  }
-
-  /**
-   * Show CDP setup instructions based on platform
-   */
-  private static showCDPInstructions(): void {
-    const platform = process.platform;
-    let command = "";
-
-    if (platform === "darwin") {
-      // macOS
-      command =
-        "/Applications/Antigravity.app/Contents/MacOS/Electron --remote-debugging-port=31905";
-    } else if (platform === "win32") {
-      // Windows
-      command =
-        "C:\\Users\\YourUser\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe --remote-debugging-port=31905";
-    } else {
-      // Linux
-      command = "antigravity --remote-debugging-port=31905";
-    }
-
-    const instructions =
-      i18n.getLocale() === "vi"
-        ? `Để bật CDP, khởi động lại IDE với lệnh sau:\n\n${command}\n\nHoặc tắt Auto Retry trong settings.`
-        : `To enable CDP, restart IDE with the following command:\n\n${command}\n\nOr disable Auto Retry in settings.`;
-
-    vscode.window.showInformationMessage(
-      instructions,
-      { modal: true },
-      i18n.t("ui.close"),
-    );
-  }
-
-  /**
    * Create ErrorInfo from Error object
    *
    * @param error Error object
@@ -156,8 +92,6 @@ export class ErrorDisplay {
       type = "network";
     } else if (message.includes("git")) {
       type = "git";
-    } else if (message.includes("CDP") || message.includes("Chrome DevTools")) {
-      type = "cdp";
     } else if (message.includes("config")) {
       type = "config";
     }
@@ -190,8 +124,6 @@ export class ErrorDisplay {
           i18n.t("error.git.checkRepo"),
           i18n.t("error.git.checkPermissions"),
         ];
-      case "cdp":
-        return [i18n.t("error.cdp.action1"), i18n.t("error.cdp.action2")];
       default:
         return [i18n.t("ui.retry")];
     }

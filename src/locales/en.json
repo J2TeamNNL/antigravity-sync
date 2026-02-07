@@ -24,13 +24,6 @@
   "error.gitError": "Git error occurred",
   "error.configError": "Configuration error",
 
-  "error.cdp.title": "CDP not available",
-  "error.cdp.details": "Chrome DevTools Protocol is required for Auto Retry feature.",
-  "error.cdp.action1": "Restart IDE with CDP flag: --remote-debugging-port=31905",
-  "error.cdp.action2": "Or disable Auto Retry in settings",
-  "error.cdp.showInstructions": "Show Instructions",
-  "error.cdp.disableRetry": "Disable Auto Retry",
-
   "sync.syncing": "Syncing...",
   "sync.synced": "Synced",
   "sync.error": "Sync error",
@@ -66,7 +59,6 @@
   "error.details": "Details: {0}",
   "error.suggestedActions": "Suggested actions",
   "error.viewDocs": "View Documentation",
-  "error.cdp.disabled": "Auto Retry has been disabled",
   "error.auth.checkToken": "Check your access token is valid",
   "error.auth.regenerateToken": "Regenerate a new access token",
   "error.network.checkConnection": "Check your internet connection",
@@ -91,8 +83,8 @@
   "panel.config.repoLabel": "Repository URL",
   "panel.config.patLabel": "Access Token",
   "panel.config.patHint": "Token needs repository read/write access",
-  "panel.config.connect": "Connect Repository",
-  "panel.config.errorMissing": "Please fill in both fields",
+  "panel.config.connect": "Connect & Sync",
+  "panel.config.errorMissing": "Please enter your access token",
 
   "panel.dashboard.syncEnabled": "Sync Enabled",
   "panel.repo.title": "Repository",

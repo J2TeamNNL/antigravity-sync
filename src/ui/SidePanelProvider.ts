@@ -2,11 +2,11 @@
  * SidePanelProvider - WebviewViewProvider for the side panel
  */
 import * as vscode from "vscode";
+import * as fs from "fs";
 import { SyncService } from "../services/SyncService";
 import { ConfigService } from "../services/ConfigService";
 import { NotificationService } from "../services/NotificationService";
 import { GitService } from "../services/GitService";
-import { AutoRetryService } from "../services/AutoRetryService";
 import { ProjectSyncService } from "../services/ProjectSyncService";
 import { getAllProviders } from "../providers";
 import { i18n } from "../services/LocalizationService";
@@ -18,7 +18,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   private readonly _extensionUri: vscode.Uri;
   private readonly _syncService: SyncService;
   private readonly _configService: ConfigService;
-  private readonly _autoRetryService: AutoRetryService;
   private readonly _projectSyncService: ProjectSyncService;
 
   constructor(
@@ -29,7 +28,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     this._extensionUri = extensionUri;
     this._syncService = syncService;
     this._configService = configService;
-    this._autoRetryService = new AutoRetryService();
     this._projectSyncService = new ProjectSyncService(configService);
   }
 
@@ -57,7 +55,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
           await this.sendConfigState();
           break;
         case "saveConfig":
-          await this.handleSaveConfig(message.repoUrl, message.pat);
+          await this.handleSaveConfig(message.token, message.repoPath);
           break;
         case "syncNow":
           await this.handleSync();
@@ -77,14 +75,8 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         case "toggleAgent":
           await this.handleToggleAgent(message.agentId, message.enabled);
           break;
-        case "toggleAgentPath":
-          await this.handleToggleAgentPath(message.agentId, message.pathType, message.enabled);
-          break;
         case "setSyncMode":
           await this.handleSetSyncMode(message.mode);
-          break;
-        case "setLocale":
-          await this.handleSetLocale(message.locale);
           break;
         case "toggleSyncEnabled":
           await this.handleToggleSyncEnabled(message.enabled);
@@ -98,19 +90,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
           break;
         case "refreshProjectStatus":
           await this.sendProjectStatus();
-          break;
-        case "startAutoRetry":
-          await this.handleStartAutoRetry();
-          break;
-        case "stopAutoRetry":
-          await this.handleStopAutoRetry();
-          break;
-        case "setAutoStart":
-          await this.handleSetAutoStart(message.data?.enabled ?? false);
-          break;
-        case "getAutoRetryStatus":
-          this.sendAutoRetryStatus();
-          this.sendAutoStartSetting();
           break;
       }
     });
@@ -129,7 +108,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     i18n.setLocale(this._configService.getResolvedLocale());
 
     const enabledAgents = this._configService.getEnabledAgents();
-    const agentPathSettings = this._configService.getAgentPathSettingsMap();
     const providers = getAllProviders();
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const agents = providers.map((provider) => ({
@@ -141,9 +119,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         : true,
     }));
 
-    const projectStatus = this._configService.isProjectModeEnabled()
-      ? await this._projectSyncService.getStatus()
-      : undefined;
+    const projectStatus = await this._projectSyncService.getStatus();
 
     this._view.webview.postMessage({
       type: "configured",
@@ -153,7 +129,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         repoUrl: config.repositoryUrl,
         syncMode,
         enabledAgents,
-        agentPathSettings,
         agents,
         locale: this._configService.getLocaleSetting(),
         projectStatus,
@@ -183,10 +158,10 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   /**
    * Handle save config from webview inline form
    */
-  private async handleSaveConfig(repoUrl: string, pat: string): Promise<void> {
+  private async handleSaveConfig(token: string, repoPathInput: string): Promise<void> {
     if (!this._view) return;
 
-    if (!repoUrl || !pat) {
+    if (!token) {
       this._view.webview.postMessage({
         type: "configError",
         data: { message: i18n.t("panel.config.errorMissing") },
@@ -195,44 +170,54 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     }
 
     try {
-      this.sendLog("Connecting...", "info");
+      this.sendLog("Detecting provider from token...", "info");
+      const provider = await this.detectProvider(token);
 
-      // Validate URL is a Git repository URL
-      this.sendLog("Validating repository URL...", "info");
-      const validationResult = this.validateGitRepoUrl(repoUrl);
-      if (!validationResult.valid) {
-        throw new Error(validationResult.error);
-      }
-
-      if (pat.length < 5) {
-        throw new Error("Access token appears too short");
-      }
-
-      // CRITICAL: Check if repo is PUBLIC (reject if accessible without auth)
-      this.sendLog("Checking repository privacy...", "info");
-      const isPublic = await this.checkIsPublicRepo(repoUrl);
-      if (isPublic) {
-        throw new Error(
-          "Repository is PUBLIC! Your data may contain sensitive info. Please use a PRIVATE repository.",
-        );
-      }
-
-      // Verify token has access to the repository FIRST (before saving)
-      this.sendLog("Verifying access token...", "info");
-      const tempGitService = new GitService(
-        this._configService.getSyncRepoPath(),
+      const repoInfo = this.resolveRepoPath(repoPathInput, provider.username);
+      this.sendLog(
+        `Using ${provider.name} repo ${repoInfo.owner}/${repoInfo.repo}`,
+        "info",
       );
-      await tempGitService.verifyAccess(repoUrl, pat);
 
-      // Save URL first (credentials storage depends on URL)
-      this.sendLog("Saving credentials to Git credential manager...", "info");
-      await this._configService.setRepositoryUrl(repoUrl);
-      // Now save credentials (uses Git credential manager - persists across workspaces)
-      await this._configService.saveCredentials(pat);
+      const remoteUrl = await this.ensureRepository(provider, repoInfo, token);
 
-      // Initialize sync
+      this.sendLog("Saving credentials...", "info");
+      await this._configService.setRepositoryUrl(remoteUrl);
+      await this._configService.saveCredentials(token);
+
+      // Decide initial direction
+      const gitService = new GitService(this._configService.getSyncRepoPath());
+      const localHasData = this.hasLocalData();
+      const remoteHasData = await gitService.hasRemoteCommits(remoteUrl, token);
+      let initialAction: "pull" | "push" | "none" = "none";
+
+      if (localHasData && remoteHasData) {
+        const choice = await vscode.window.showQuickPick(
+          [
+            { label: "Pull remote then merge (recommended)", description: "Keep remote as source of truth", value: "pull" },
+            { label: "Push local over remote", description: "Use local data as source of truth", value: "push" },
+          ],
+          {
+            placeHolder: "Remote already has data. Choose initial sync direction.",
+          },
+        );
+        initialAction = (choice?.value as "pull" | "push") || "pull";
+      } else if (remoteHasData) {
+        initialAction = "pull";
+      } else if (localHasData) {
+        initialAction = "push";
+      }
+
       this.sendLog("Initializing Git repository...", "info");
       await this._syncService.initialize();
+
+      if (initialAction === "pull") {
+        this.sendLog("Pulling remote data first...", "info");
+        await this._syncService.pull();
+      } else if (initialAction === "push") {
+        this.sendLog("Pushing local data first...", "info");
+        await this._syncService.push();
+      }
 
       // Wire git logger to UI panel
       this._syncService.setGitLogger((msg, type) => this.sendLog(msg, type));
@@ -264,74 +249,153 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /**
-   * Validate Git repository URL format
-   */
-  private validateGitRepoUrl(url: string): { valid: boolean; error?: string } {
-    // Must start with valid protocol
-    if (
-      !url.startsWith("http://") &&
-      !url.startsWith("https://") &&
-      !url.startsWith("git@")
-    ) {
-      return { valid: false, error: "Invalid URL. Use https://... or git@..." };
+  private async detectProvider(
+    token: string,
+  ): Promise<{ name: "github" | "gitlab"; host: string; username: string }> {
+    const ghResp = await fetch("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+
+    if (ghResp.status === 200) {
+      const data = (await ghResp.json()) as { login?: string };
+      if (!data.login) {
+        throw new Error("Cannot read GitHub username from token");
+      }
+      return { name: "github", host: "github.com", username: data.login };
     }
 
-    // Known Git providers
-    const gitProviders = [
-      "github.com",
-      "gitlab.com",
-      "bitbucket.org",
-      "gitee.com",
-      "codeberg.org",
-      "sr.ht",
-      "dev.azure.com",
-    ];
-
-    // Check if URL contains a known provider OR has .git extension OR has typical repo path
-    const urlLower = url.toLowerCase();
-    const isKnownProvider = gitProviders.some((p) => urlLower.includes(p));
-    const hasGitExtension = urlLower.endsWith(".git");
-    const hasRepoPath = /\/([\w.-]+)\/([\w.-]+)(\.git)?$/.test(url);
-
-    if (!isKnownProvider && !hasGitExtension && !hasRepoPath) {
-      return {
-        valid: false,
-        error:
-          "URL does not look like a Git repository. Expected format: https://host/user/repo or git@host:user/repo.git",
-      };
+    if (ghResp.status !== 401 && ghResp.status !== 403) {
+      // If GitHub responds with other error, surface it
+      const text = await ghResp.text();
+      throw new Error(`GitHub error: ${ghResp.status} ${text}`);
     }
 
-    return { valid: true };
+    const glResp = await fetch("https://gitlab.com/api/v4/user", {
+      headers: {
+        "PRIVATE-TOKEN": token,
+      },
+    });
+    if (glResp.status === 200) {
+      const data = (await glResp.json()) as { username?: string };
+      if (!data.username) {
+        throw new Error("Cannot read GitLab username from token");
+      }
+      return { name: "gitlab", host: "gitlab.com", username: data.username };
+    }
+
+    const text = await glResp.text();
+    throw new Error(`Cannot authenticate with GitHub or GitLab: ${text}`);
   }
 
-  /**
-   * Check if repository is PUBLIC by trying to access it without auth
-   * If accessible without auth = PUBLIC = reject
-   */
-  private async checkIsPublicRepo(url: string): Promise<boolean> {
-    const { exec } = require("child_process");
-    const { promisify } = require("util");
-    const execAsync = promisify(exec);
-
-    try {
-      // Try git ls-remote without authentication
-      // Disable credential helpers to ensure we test without stored creds
-      await execAsync(`git ls-remote ${url}`, {
-        timeout: 10000,
-        env: {
-          ...process.env,
-          GIT_ASKPASS: "echo", // Disable GUI prompts
-          GIT_TERMINAL_PROMPT: "0", // Disable terminal prompts
-          GIT_SSH_COMMAND: "ssh -o BatchMode=yes", // Disable SSH prompts
-          GIT_CONFIG_NOSYSTEM: "1", // Ignore system git config
-          HOME: "/nonexistent", // Ignore user's credential helpers
-        },
-      });
-      return true; // Accessible without auth = PUBLIC
-    } catch {
-      return false; // Not accessible = PRIVATE (or doesn't exist)
+  private resolveRepoPath(
+    repoPath: string,
+    defaultOwner: string,
+  ): { owner: string; repo: string } {
+    const cleaned = (repoPath || "").trim().replace(/^\/+|\/+$/g, "");
+    if (!cleaned) {
+      return { owner: defaultOwner, repo: "ai-context-sync" };
     }
+
+    const parts = cleaned.split("/");
+    if (parts.length === 1) {
+      return { owner: defaultOwner, repo: this.stripGit(parts[0]) };
+    }
+    return { owner: parts[0], repo: this.stripGit(parts[1]) };
+  }
+
+  private stripGit(name: string): string {
+    return name.endsWith(".git") ? name.slice(0, -4) : name;
+  }
+
+  private async ensureRepository(
+    provider: { name: "github" | "gitlab"; host: string; username: string },
+    repo: { owner: string; repo: string },
+    token: string,
+  ): Promise<string> {
+    if (provider.name === "github") {
+      const base = "https://api.github.com";
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      };
+
+      const repoApi = `${base}/repos/${repo.owner}/${repo.repo}`;
+      const res = await fetch(repoApi, { headers });
+      if (res.status === 200) {
+        return `https://${provider.host}/${repo.owner}/${repo.repo}.git`;
+      }
+      if (res.status !== 404) {
+        const text = await res.text();
+        throw new Error(`GitHub error: ${res.status} ${text}`);
+      }
+
+      // Create repo
+      const createBody = { name: repo.repo, private: true };
+      let createUrl = `${base}/user/repos`;
+      if (repo.owner !== provider.username) {
+        createUrl = `${base}/orgs/${repo.owner}/repos`;
+      }
+      const createRes = await fetch(createUrl, {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(createBody),
+      });
+      if (createRes.status === 201) {
+        return `https://${provider.host}/${repo.owner}/${repo.repo}.git`;
+      }
+      const text = await createRes.text();
+      throw new Error(`Failed to create GitHub repo: ${createRes.status} ${text}`);
+    }
+
+    // GitLab
+    const headers = {
+      "PRIVATE-TOKEN": token,
+      "Content-Type": "application/json",
+    };
+    const encoded = encodeURIComponent(`${repo.owner}/${repo.repo}`);
+    const getUrl = `https://gitlab.com/api/v4/projects/${encoded}`;
+    const res = await fetch(getUrl, { headers });
+    if (res.status === 200) {
+      return `https://${provider.host}/${repo.owner}/${repo.repo}.git`;
+    }
+    if (res.status !== 404) {
+      const text = await res.text();
+      throw new Error(`GitLab error: ${res.status} ${text}`);
+    }
+
+    if (repo.owner !== provider.username) {
+      throw new Error(
+        "Creating GitLab repo under another owner/group is not supported in this flow. Use your own namespace or pre-create the repo.",
+      );
+    }
+
+    const createRes = await fetch("https://gitlab.com/api/v4/projects", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: repo.repo,
+        path: repo.repo,
+        visibility: "private",
+      }),
+    });
+    if (createRes.status === 201) {
+      return `https://${provider.host}/${repo.owner}/${repo.repo}.git`;
+    }
+    const text = await createRes.text();
+    throw new Error(`Failed to create GitLab repo: ${createRes.status} ${text}`);
+  }
+
+  private hasLocalData(): boolean {
+    const syncPath = this._configService.getSyncRepoPath();
+    if (!fs.existsSync(syncPath)) return false;
+    const entries = fs.readdirSync(syncPath).filter((name: string) => name !== ".git");
+    return entries.length > 0;
   }
 
   /**
@@ -512,29 +576,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     await this.sendConfigState();
   }
 
-  private async handleToggleAgentPath(
-    agentId: string,
-    pathType: "global" | "project",
-    enabled: boolean,
-  ): Promise<void> {
-    const config = vscode.workspace.getConfiguration("aiContextSync");
-    const agentPaths = config.get<Record<string, any>>("agentPaths", {});
-    const current = agentPaths[agentId] || {};
-
-    agentPaths[agentId] = {
-      ...current,
-      ...(pathType === "global" ? { globalEnabled: enabled } : { projectEnabled: enabled }),
-    };
-
-    await config.update(
-      "agentPaths",
-      agentPaths,
-      vscode.ConfigurationTarget.Global,
-    );
-
-    await this.sendConfigState();
-  }
-
   private async handleSetSyncMode(mode: string): Promise<void> {
     const config = vscode.workspace.getConfiguration("aiContextSync");
     await config.update("syncMode", mode, vscode.ConfigurationTarget.Global);
@@ -553,13 +594,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       this._syncService.stopAutoSync();
     }
 
-    await this.sendConfigState();
-  }
-
-  private async handleSetLocale(locale: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration("aiContextSync");
-    await config.update("locale", locale, vscode.ConfigurationTarget.Global);
-    i18n.setLocale(this._configService.getResolvedLocale());
     await this.sendConfigState();
   }
 
@@ -652,159 +686,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     await this.sendConfigState();
   }
 
-  /**
-   * Try to auto-start Auto Retry (called from extension activation)
-   * Only starts if CDP is available, otherwise logs error silently
-   */
-  public async tryAutoStartRetry(): Promise<void> {
-    // Set up log callback
-    this._autoRetryService.setLogCallback((msg, type) => {
-      this.sendAutoRetryLog(msg, type === "warning" ? "info" : type);
-    });
-
-    // Check CDP status
-    const cdpAvailable = await this._autoRetryService.isCDPAvailable();
-
-    if (!cdpAvailable) {
-      this.sendAutoRetryLog(
-        "Auto-start: CDP not available. Please restart IDE with CDP flag.",
-        "error",
-      );
-      this.sendAutoRetryStatus();
-      return;
-    }
-
-    // CDP available - start
-    this.sendAutoRetryLog("Auto-starting Auto Retry...", "info");
-    const started = await this._autoRetryService.start();
-
-    if (started) {
-      this.sendAutoRetryStatus();
-      this.sendAutoRetryLog("✅ Auto Retry auto-started!", "success");
-    } else {
-      this.sendAutoRetryLog("Auto-start failed", "error");
-      this.sendAutoRetryStatus();
-    }
-  }
-
-  /**
-   * Handle start auto-retry from webview
-   * Single button flow: check CDP -> if OK, start; if not, auto-setup
-   */
-  private async handleStartAutoRetry(): Promise<void> {
-    this.sendAutoRetryLog("Checking CDP...", "info");
-
-    // Set up log callback
-    this._autoRetryService.setLogCallback((msg, type) => {
-      this.sendAutoRetryLog(msg, type === "warning" ? "info" : type);
-    });
-
-    // Check CDP status first
-    const cdpAvailable = await this._autoRetryService.isCDPAvailable();
-
-    if (!cdpAvailable) {
-      // CDP not available - auto setup
-      this.sendAutoRetryLog("CDP not enabled. Setting up...", "info");
-      const setupSuccess = await this._autoRetryService.setupCDP();
-
-      if (setupSuccess) {
-        // Setup done, user needs to restart - dialog already shown by Relauncher
-        this.sendAutoRetryLog(
-          "Please restart IDE to enable Auto Retry",
-          "info",
-        );
-      } else {
-        this.sendAutoRetryLog(
-          "Setup failed. Check instructions above.",
-          "error",
-        );
-      }
-      this.sendAutoRetryStatus();
-      return;
-    }
-
-    // CDP available - start immediately
-    this.sendAutoRetryLog("CDP available! Starting...", "success");
-    const started = await this._autoRetryService.start();
-
-    if (started) {
-      this.sendAutoRetryStatus();
-      NotificationService.info(
-        "Auto Retry started - auto-clicking Retry buttons",
-      );
-    } else {
-      this.sendAutoRetryStatus();
-    }
-  }
-
-  /**
-   * Handle stop auto-retry from webview
-   */
-  private async handleStopAutoRetry(): Promise<void> {
-    await this._autoRetryService.stop();
-    this.sendAutoRetryStatus();
-    this.sendAutoRetryLog("Auto Retry stopped", "info");
-  }
-
-  /**
-   * Send auto-retry status to webview
-   */
-  private sendAutoRetryStatus(): void {
-    if (!this._view) return;
-    const status = this._autoRetryService.getStatus();
-    this._view.webview.postMessage({
-      type: "autoRetryStatus",
-      data: {
-        running: status.running,
-        retryCount: status.retryCount,
-        connectionCount: status.connectionCount,
-      },
-    });
-  }
-
-  /**
-   * Send auto-retry log message to webview
-   */
-  private sendAutoRetryLog(
-    message: string,
-    logType: "success" | "error" | "info",
-  ): void {
-    if (!this._view) return;
-    this._view.webview.postMessage({
-      type: "autoRetryLog",
-      data: { message, logType },
-    });
-  }
-
-  /**
-   * Handle set auto-start setting from webview
-   */
-  private async handleSetAutoStart(enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration("aiContextSync");
-    await config.update(
-      "autoStartRetry",
-      enabled,
-      vscode.ConfigurationTarget.Global,
-    );
-    this.sendAutoRetryLog(
-      enabled ? "Auto-start enabled" : "Auto-start disabled",
-      "info",
-    );
-  }
-
-  /**
-   * Send auto-start setting to webview
-   */
-  private sendAutoStartSetting(): void {
-    if (!this._view) return;
-    const config = vscode.workspace.getConfiguration("aiContextSync");
-    const enabled = config.get("autoStartRetry", false);
-    this._view.webview.postMessage({
-      type: "autoStartSetting",
-      data: { enabled },
-    });
-  }
-
   private getUiStrings(): Record<string, string> {
     return {
       "panel.mode.title": i18n.t("panel.mode.title"),
@@ -813,15 +694,8 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       "panel.mode.project": i18n.t("mode.projectRepo"),
       "panel.mode.both": i18n.t("mode.both"),
 
-      "panel.locale.title": i18n.t("panel.locale.title"),
-      "panel.locale.auto": i18n.t("panel.locale.auto"),
-      "panel.locale.en": i18n.t("panel.locale.en"),
-      "panel.locale.vi": i18n.t("panel.locale.vi"),
-
       "panel.agents.title": i18n.t("panel.agents.title"),
       "panel.agents.desc": i18n.t("panel.agents.desc"),
-      "panel.agents.global": i18n.t("panel.agents.global"),
-      "panel.agents.project": i18n.t("panel.agents.project"),
 
       "panel.config.title": i18n.t("panel.config.title"),
       "panel.config.desc": i18n.t("panel.config.desc"),

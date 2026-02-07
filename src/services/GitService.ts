@@ -355,6 +355,19 @@ export class GitService {
   }
 
   /**
+   * Check if remote repository has any commits/refs
+   */
+  async hasRemoteCommits(remoteUrl: string, token: string): Promise<boolean> {
+    const authUrl = this.buildAuthenticatedUrl(remoteUrl, token);
+    try {
+      const refs = await simpleGit().listRemote([authUrl]);
+      return refs.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Stage all changes
    */
   async stageAll(): Promise<void> {
