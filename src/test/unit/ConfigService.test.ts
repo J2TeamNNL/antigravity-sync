@@ -108,7 +108,7 @@ describe('ConfigService', () => {
     it('should save credentials securely', async () => {
       await configService.saveCredentials('ghp_test_token');
       expect(mockSecrets.store).toHaveBeenCalledWith(
-        'antigravitySync.gitToken',
+        'aiContextSync.gitToken',
         'ghp_test_token'
       );
     });
@@ -121,7 +121,7 @@ describe('ConfigService', () => {
 
     it('should delete credentials', async () => {
       await configService.deleteCredentials();
-      expect(mockSecrets.delete).toHaveBeenCalledWith('antigravitySync.gitToken');
+      expect(mockSecrets.delete).toHaveBeenCalledWith('aiContextSync.gitToken');
     });
   });
 });

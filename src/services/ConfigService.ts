@@ -47,7 +47,7 @@ export class ConfigService {
    * Get the full configuration
    */
   getConfig(): SyncConfig {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     const syncConfig = {
       repositoryUrl: config.get<string>("repositoryUrl", ""),
       autoSync: config.get<boolean>("autoSync", true),
@@ -510,7 +510,7 @@ export class ConfigService {
    */
   async setRepositoryUrl(url: string): Promise<void> {
     await vscode.workspace
-      .getConfiguration("antigravitySync")
+      .getConfiguration("aiContextSync")
       .update("repositoryUrl", url, vscode.ConfigurationTarget.Global);
   }
 

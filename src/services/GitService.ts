@@ -306,7 +306,7 @@ export class GitService {
 
             // Create initial commit immediately to establish HEAD
             const readmePath = path.join(this.repoPath, 'README.md');
-            fs.writeFileSync(readmePath, '# Antigravity Sync\n\nGemini context sync repository.\n');
+            fs.writeFileSync(readmePath, '# AI Context Sync\n\nGemini context sync repository.\n');
             await this.git.add('README.md');
             await this.git.commit('Initial commit');
           } else {
@@ -317,7 +317,7 @@ export class GitService {
     }
 
     // Configure git
-    await this.git.addConfig('user.name', 'Antigravity Sync', false, 'local');
+    await this.git.addConfig('user.name', 'AI Context Sync', false, 'local');
     await this.git.addConfig('user.email', 'sync@antigravity.local', false, 'local');
   }
 
@@ -593,7 +593,7 @@ export class GitService {
 
       if (hasChanges) {
         this.log('[GitService.pull] Stashing local changes...');
-        await this.git.stash(['push', '-m', 'antigravity-sync-temp']);
+        await this.git.stash(['push', '-m', 'ai-context-sync-temp']);
       }
 
       try {

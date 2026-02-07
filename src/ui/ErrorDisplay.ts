@@ -64,7 +64,7 @@ export class ErrorDisplay {
       vscode.env.openExternal(vscode.Uri.parse(docsUrl));
     } else if (selection === i18n.t("ui.retry")) {
       // Emit retry event
-      vscode.commands.executeCommand("antigravitySync.retryLastAction");
+      vscode.commands.executeCommand("aiContextSync.retryLastAction");
     }
   }
 
@@ -93,7 +93,7 @@ export class ErrorDisplay {
     } else if (selection === i18n.t("error.cdp.disableRetry")) {
       // Disable auto retry
       await vscode.workspace
-        .getConfiguration("antigravitySync")
+        .getConfiguration("aiContextSync")
         .update("autoRetryEnabled", false, vscode.ConfigurationTarget.Global);
       vscode.window.showInformationMessage(i18n.t("error.cdp.disabled"));
     }

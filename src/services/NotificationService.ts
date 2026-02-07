@@ -106,35 +106,35 @@ export class NotificationService {
       void this.error('Repository must be private', {
         detail: 'Your Antigravity context may contain sensitive information. Please use a private repository.',
         actions: [
-          { title: 'Configure', action: () => void vscode.commands.executeCommand('antigravitySync.configure') }
+          { title: 'Configure', action: () => void vscode.commands.executeCommand('aiContextSync.configure') }
         ]
       });
     } else if (error.message.includes('404')) {
       void this.error('Repository not found', {
         detail: 'Please check the repository URL and ensure your token has access.',
         actions: [
-          { title: 'Configure', action: () => void vscode.commands.executeCommand('antigravitySync.configure') }
+          { title: 'Configure', action: () => void vscode.commands.executeCommand('aiContextSync.configure') }
         ]
       });
     } else if (error.message.includes('401')) {
       void this.error('Invalid access token', {
         detail: 'Your Personal Access Token is invalid or expired.',
         actions: [
-          { title: 'Update Token', action: () => void vscode.commands.executeCommand('antigravitySync.configure') }
+          { title: 'Update Token', action: () => void vscode.commands.executeCommand('aiContextSync.configure') }
         ]
       });
     } else if (error.message.includes('network') || error.message.includes('ENOTFOUND')) {
       void this.error('Network error', {
         detail: 'Please check your internet connection.',
         actions: [
-          { title: 'Retry', action: () => void vscode.commands.executeCommand('antigravitySync.syncNow') }
+          { title: 'Retry', action: () => void vscode.commands.executeCommand('aiContextSync.syncNow') }
         ]
       });
     } else {
       void this.error('Sync failed', {
         detail: error.message,
         actions: [
-          { title: 'Retry', action: () => void vscode.commands.executeCommand('antigravitySync.syncNow') },
+          { title: 'Retry', action: () => void vscode.commands.executeCommand('aiContextSync.syncNow') },
           { title: 'Show Logs', action: () => void vscode.commands.executeCommand('workbench.action.toggleDevTools') }
         ]
       });

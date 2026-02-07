@@ -35,7 +35,7 @@ export class AutoRetryService {
    * Get configuration from VS Code settings
    */
   private getConfig(): AutoRetryConfig {
-    const config = vscode.workspace.getConfiguration('antigravitySync');
+    const config = vscode.workspace.getConfiguration('aiContextSync');
     return {
       enabled: config.get<boolean>('autoRetryEnabled', false),
       intervalSeconds: config.get<number>('autoRetryInterval', 3),

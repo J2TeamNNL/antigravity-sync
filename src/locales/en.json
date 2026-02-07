@@ -1,5 +1,5 @@
 {
-  "setup.welcome": "Welcome to Antigravity Sync",
+  "setup.welcome": "Welcome to AI Context Sync",
   "setup.description": "Sync your AI agent settings and artifacts across machines via private Git repository",
   "setup.continue": "Continue",
   "setup.enterPAT": "Enter your Git access token",
@@ -11,7 +11,7 @@
   "setup.validating": "Validating repository...",
   "setup.checking": "Checking repository...",
   "setup.initializing": "Initializing sync...",
-  "setup.success": "Antigravity Sync configured successfully! 🎉",
+  "setup.success": "AI Context Sync configured successfully! 🎉",
   "setup.successDescription": "Your context will now sync automatically.",
   "setup.openPanel": "Open Panel",
   "setup.later": "Later",

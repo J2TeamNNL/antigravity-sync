@@ -201,7 +201,7 @@ export class SetupWizard {
     );
 
     if (selection === i18n.t("setup.openPanel")) {
-      vscode.commands.executeCommand("antigravity-sync.focus");
+      vscode.commands.executeCommand("ai-context-sync.focus");
     }
   }
 

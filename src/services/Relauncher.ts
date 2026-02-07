@@ -19,7 +19,7 @@ export class Relauncher {
 
   constructor() {
     this.platform = os.platform();
-    const config = vscode.workspace.getConfiguration('antigravitySync');
+    const config = vscode.workspace.getConfiguration('aiContextSync');
     this.cdpPort = config.get('cdpPort', DEFAULT_PORT);
   }
 

@@ -1,18 +1,18 @@
 {
-  "name": "antigravity-sync",
-  "displayName": "Antigravity Auto Retry/Sync",
-  "description": "Auto-sync AI context + Auto-accept/retry for AI coding agents.",
-  "version": "1.1.0",
+  "name": "ai-context-sync",
+  "displayName": "AI Context Sync",
+  "description": "Sync AI context & settings across multiple IDEs (Cursor, Windsurf, VS Code). Private, Git-based, zero babysitting.",
+  "version": "2.0.0",
   "publisher": "j2teamnnl",
   "author": "Nguyen Nam Long <https://www.facebook.com/j2teamnnl>",
   "icon": "resources/icons/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/j2teamnnl/antigravity-sync"
+    "url": "https://github.com/j2teamnnl/ai-context-sync"
   },
   "bugs": {
-    "url": "https://github.com/j2teamnnl/antigravity-sync/issues"
+    "url": "https://github.com/j2teamnnl/ai-context-sync/issues"
   },
   "homepage": "https://github.com/j2teamnnl/antigravity-sync#readme",
   "engines": {
@@ -22,9 +22,7 @@
     "Other"
   ],
   "keywords": [
-    "antigravity sync",
-    "cursor auto retry",
-    "vscode auto retry",
+    "ai context sync",
     "ai agent automation"
   ],
   "activationEvents": [
@@ -34,80 +32,80 @@
   "contributes": {
     "commands": [
       {
-        "command": "antigravitySync.configure",
-        "title": "Antigravity Sync: Configure Repository",
+        "command": "aiContextSync.configure",
+        "title": "AI Context Sync: Configure Repository",
         "icon": "$(gear)"
       },
       {
-        "command": "antigravitySync.syncNow",
-        "title": "Antigravity Sync: Sync Now",
+        "command": "aiContextSync.syncNow",
+        "title": "AI Context Sync: Sync Now",
         "icon": "$(sync)"
       },
       {
-        "command": "antigravitySync.push",
-        "title": "Antigravity Sync: Push Changes",
+        "command": "aiContextSync.push",
+        "title": "AI Context Sync: Push Changes",
         "icon": "$(cloud-upload)"
       },
       {
-        "command": "antigravitySync.pull",
-        "title": "Antigravity Sync: Pull Changes",
+        "command": "aiContextSync.pull",
+        "title": "AI Context Sync: Pull Changes",
         "icon": "$(cloud-download)"
       },
       {
-        "command": "antigravitySync.showStatus",
-        "title": "Antigravity Sync: Show Status",
+        "command": "aiContextSync.showStatus",
+        "title": "AI Context Sync: Show Status",
         "icon": "$(info)"
       },
       {
-        "command": "antigravitySync.openPanel",
-        "title": "Antigravity Sync: Open Panel",
+        "command": "aiContextSync.openPanel",
+        "title": "AI Context Sync: Open Panel",
         "icon": "$(window)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "antigravity-sync",
-          "title": "Antigravity Sync",
+          "id": "ai-context-sync",
+          "title": "AI Context Sync",
           "icon": "resources/icons/sidebar.svg"
         }
       ]
     },
     "views": {
-      "antigravity-sync": [
+      "ai-context-sync": [
         {
           "type": "webview",
-          "id": "antigravitySync.mainPanel",
+          "id": "aiContextSync.mainPanel",
           "name": "Sync Dashboard"
         }
       ]
     },
     "configuration": {
-      "title": "Antigravity Sync",
+      "title": "AI Context Sync",
       "properties": {
-        "antigravitySync.repositoryUrl": {
+        "aiContextSync.repositoryUrl": {
           "type": "string",
           "default": "",
           "description": "GitHub repository URL for syncing (must be private)"
         },
-        "antigravitySync.enabled": {
+        "aiContextSync.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable or disable Antigravity Sync completely"
+          "description": "Enable or disable AI Context Sync completely"
         },
-        "antigravitySync.autoSync": {
+        "aiContextSync.autoSync": {
           "type": "boolean",
           "default": true,
           "description": "Automatically sync changes when files change"
         },
-        "antigravitySync.syncIntervalMinutes": {
+        "aiContextSync.syncIntervalMinutes": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 60,
           "description": "Auto-sync interval in minutes"
         },
-        "antigravitySync.excludePatterns": {
+        "aiContextSync.excludePatterns": {
           "type": "array",
           "default": [],
           "items": {
@@ -115,23 +113,23 @@
           },
           "description": "Additional patterns to exclude from sync"
         },
-        "antigravitySync.geminiPath": {
+        "aiContextSync.geminiPath": {
           "type": "string",
           "default": "",
           "description": "Custom path to .gemini folder (default: ~/.gemini)"
         },
-        "antigravitySync.syncFolders": {
+        "aiContextSync.syncFolders": {
           "type": "array",
           "default": [
             "knowledge",
-            "antigravity"
+            "brain"
           ],
           "items": {
             "type": "string"
           },
           "description": "Folders to sync within .gemini directory"
         },
-        "antigravitySync.enabledAgents": {
+        "aiContextSync.enabledAgents": {
           "type": "array",
           "default": [
             "antigravity"
@@ -146,7 +144,7 @@
           },
           "description": "Enabled AI agents for sync"
         },
-        "antigravitySync.syncMode": {
+        "aiContextSync.syncMode": {
           "type": "string",
           "default": "private",
           "enum": [
@@ -156,7 +154,7 @@
           ],
           "description": "Sync mode: private repo, project repo, or both"
         },
-        "antigravitySync.locale": {
+        "aiContextSync.locale": {
           "type": "string",
           "default": "auto",
           "enum": [
@@ -166,55 +164,55 @@
           ],
           "description": "UI language (auto, English, Vietnamese)"
         },
-        "antigravitySync.agentPaths": {
+        "aiContextSync.agentPaths": {
           "type": "object",
           "default": {},
           "description": "Per-agent path settings (global/project enabled, custom global path)"
         },
-        "antigravitySync.agentExcludePatterns": {
+        "aiContextSync.agentExcludePatterns": {
           "type": "object",
           "default": {},
           "description": "Per-agent exclude patterns (merged with global excludes)"
         },
-        "antigravitySync.autoRetryEnabled": {
+        "aiContextSync.autoRetryEnabled": {
           "type": "boolean",
           "default": false,
           "description": "Enable auto-accept for AI agent buttons (requires CDP setup)"
         },
-        "antigravitySync.autoStartRetry": {
+        "aiContextSync.autoStartRetry": {
           "type": "boolean",
           "default": false,
           "description": "Automatically start Auto Retry when IDE launches"
         },
-        "antigravitySync.cdpPort": {
+        "aiContextSync.cdpPort": {
           "type": "number",
           "default": 31905,
           "minimum": 1024,
           "maximum": 65535,
           "description": "CDP remote debugging port for auto-accept"
         },
-        "antigravitySync.cdpPortRange": {
+        "aiContextSync.cdpPortRange": {
           "type": "number",
           "default": 3,
           "minimum": 0,
           "maximum": 10,
           "description": "Port range to scan (port ± range)"
         },
-        "antigravitySync.autoRetryInterval": {
+        "aiContextSync.autoRetryInterval": {
           "type": "number",
           "default": 3,
           "minimum": 1,
           "maximum": 30,
           "description": "Interval in seconds between retry checks"
         },
-        "antigravitySync.autoRetryMaxRetries": {
+        "aiContextSync.autoRetryMaxRetries": {
           "type": "number",
           "default": 50,
           "minimum": 1,
           "maximum": 500,
           "description": "Maximum number of auto-retries before stopping"
         },
-        "antigravitySync.autoRetryCooldown": {
+        "aiContextSync.autoRetryCooldown": {
           "type": "number",
           "default": 5,
           "minimum": 1,

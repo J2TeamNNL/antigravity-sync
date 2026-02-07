@@ -1,5 +1,5 @@
 /**
- * Antigravity Sync - VS Code Extension
+ * AI Context Sync - VS Code Extension
  * Sync ~/.gemini/ folder across machines via private Git repository
  */
 import * as vscode from "vscode";
@@ -20,7 +20,7 @@ let sidePanelProvider: SidePanelProvider | undefined;
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  console.log("Antigravity Sync is activating...");
+  console.log("AI Context Sync is activating...");
 
   // Initialize services
   const configService = new ConfigService(context);
@@ -44,11 +44,11 @@ export async function activate(
 
   // Register commands
   context.subscriptions.push(
-    vscode.commands.registerCommand("antigravitySync.configure", async () => {
+    vscode.commands.registerCommand("aiContextSync.configure", async () => {
       await configureRepository(context, configService, syncService!);
     }),
 
-    vscode.commands.registerCommand("antigravitySync.syncNow", async () => {
+    vscode.commands.registerCommand("aiContextSync.syncNow", async () => {
       try {
         await syncService?.sync();
         sidePanelProvider?.updatePanelData();
@@ -57,7 +57,7 @@ export async function activate(
       }
     }),
 
-    vscode.commands.registerCommand("antigravitySync.push", async () => {
+    vscode.commands.registerCommand("aiContextSync.push", async () => {
       try {
         await syncService?.push();
         sidePanelProvider?.updatePanelData();
@@ -66,7 +66,7 @@ export async function activate(
       }
     }),
 
-    vscode.commands.registerCommand("antigravitySync.pull", async () => {
+    vscode.commands.registerCommand("aiContextSync.pull", async () => {
       try {
         await syncService?.pull();
         sidePanelProvider?.updatePanelData();
@@ -75,12 +75,12 @@ export async function activate(
       }
     }),
 
-    vscode.commands.registerCommand("antigravitySync.showStatus", async () => {
+    vscode.commands.registerCommand("aiContextSync.showStatus", async () => {
       await showStatus(syncService!);
     }),
 
-    vscode.commands.registerCommand("antigravitySync.openPanel", () => {
-      vscode.commands.executeCommand("antigravity-sync.focus");
+    vscode.commands.registerCommand("aiContextSync.openPanel", () => {
+      vscode.commands.executeCommand("ai-context-sync.focus");
     }),
 
     statusBarService.getStatusBarItem(),
@@ -104,7 +104,7 @@ export async function activate(
   }
 
   // Auto-start Auto Retry if enabled
-  const config = vscode.workspace.getConfiguration("antigravitySync");
+  const config = vscode.workspace.getConfiguration("aiContextSync");
   if (config.get("autoStartRetry", false)) {
     // Delay auto-start to let UI initialize
     setTimeout(async () => {
@@ -117,13 +117,13 @@ export async function activate(
     }, 3000);
   }
 
-  console.log("Antigravity Sync activated!");
+  console.log("AI Context Sync activated!");
 }
 
 export function deactivate(): void {
   watcherService?.stop();
   statusBarService?.hide();
-  console.log("Antigravity Sync deactivated");
+  console.log("AI Context Sync deactivated");
 }
 
 /**
@@ -132,13 +132,13 @@ export function deactivate(): void {
 function showWelcomeMessage(): void {
   vscode.window
     .showInformationMessage(
-      "Welcome to Antigravity Sync! Set up your private repository to sync your Gemini context.",
+      "Welcome to AI Context Sync! Set up your private repository to sync your Gemini context.",
       "Configure Now",
       "Later",
     )
     .then((selection) => {
       if (selection === "Configure Now") {
-        vscode.commands.executeCommand("antigravitySync.configure");
+        vscode.commands.executeCommand("aiContextSync.configure");
       }
     });
 }
@@ -153,7 +153,7 @@ async function configureRepository(
 ): Promise<void> {
   // Step 1: Welcome and explanation
   const proceed = await vscode.window.showInformationMessage(
-    "Antigravity Sync Setup\n\nThis will sync your ~/.gemini folder (Knowledge Items, settings) to a private Git repository.",
+    "AI Context Sync Setup\n\nThis will sync your ~/.gemini folder (Knowledge Items, settings) to a private Git repository.",
     { modal: true },
     "Continue",
   );
@@ -219,12 +219,12 @@ async function configureRepository(
 
     vscode.window
       .showInformationMessage(
-        "Antigravity Sync configured successfully! 🎉\n\nYour context will now sync automatically.",
+        "AI Context Sync configured successfully! 🎉\n\nYour context will now sync automatically.",
         "Open Panel",
       )
       .then((selection) => {
         if (selection === "Open Panel") {
-          vscode.commands.executeCommand("antigravity-sync.focus");
+          vscode.commands.executeCommand("ai-context-sync.focus");
         }
       });
 
@@ -261,7 +261,7 @@ async function showStatus(syncService: SyncService): Promise<void> {
   ];
 
   await vscode.window.showQuickPick(items, {
-    title: "Antigravity Sync Status",
+    title: "AI Context Sync Status",
     placeHolder: "Current sync status",
   });
 }

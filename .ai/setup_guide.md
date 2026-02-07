@@ -5,7 +5,7 @@
 ### Bước 1: Cài đặt dependencies
 
 ```bash
-cd /Users/hangvalong/Code/antigravity-sync
+cd /Users/hangvalong/Code/ai-context-sync
 npm install
 ```
 
@@ -24,7 +24,7 @@ npm run build
 1. Mở project trong Antigravity/VSCode:
 
    ```bash
-   agy /Users/hangvalong/Code/antigravity-sync
+   agy /Users/hangvalong/Code/ai-context-sync
    ```
 
 2. Nhấn **F5** (hoặc Run > Start Debugging)
@@ -32,8 +32,8 @@ npm run build
    - Trong cửa sổ mới này, extension đã được activate
 
 3. Trong Extension Development Host:
-   - Mở Antigravity Sync panel từ sidebar (icon sync)
-   - Hoặc Command Palette (`Cmd+Shift+P`) → "Antigravity Sync: Configure Repository"
+   - Mở AI Context Sync panel từ sidebar (icon sync)
+   - Hoặc Command Palette (`Cmd+Shift+P`) → "AI Context Sync: Configure Repository"
 
 ### Bước 4: Debug
 
@@ -110,5 +110,5 @@ npm run package
 ### Install VSIX locally
 
 ```bash
-agy --install-extension antigravity-sync-0.x.x.vsix
+agy --install-extension ai-context-sync-2.0.0.vsix
 ```

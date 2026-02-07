@@ -12,7 +12,7 @@ import { getAllProviders } from "../providers";
 import { i18n } from "../services/LocalizationService";
 
 export class SidePanelProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "antigravitySync.mainPanel";
+  public static readonly viewType = "aiContextSync.mainPanel";
 
   private _view?: vscode.WebviewView;
   private readonly _extensionUri: vscode.Uri;
@@ -422,7 +422,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     // Delete credentials and clear URL
     await this._configService.deleteCredentials();
     await vscode.workspace
-      .getConfiguration("antigravitySync")
+      .getConfiguration("aiContextSync")
       .update("repositoryUrl", "", vscode.ConfigurationTarget.Global);
 
     // Delete .git folder to allow connecting to different repo
@@ -468,7 +468,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     folder: string,
     enabled: boolean,
   ): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     const syncFolders = config.get<string[]>("syncFolders", [
       "knowledge",
       "antigravity",
@@ -489,7 +489,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleToggleAgent(agentId: string, enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     const currentAgents = config.get<string[]>("enabledAgents", ["antigravity"]);
     const agentSet = new Set(currentAgents);
 
@@ -517,7 +517,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     pathType: "global" | "project",
     enabled: boolean,
   ): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     const agentPaths = config.get<Record<string, any>>("agentPaths", {});
     const current = agentPaths[agentId] || {};
 
@@ -536,7 +536,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleSetSyncMode(mode: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     await config.update("syncMode", mode, vscode.ConfigurationTarget.Global);
 
     if (this._configService.isPrivateModeEnabled()) {
@@ -557,7 +557,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleSetLocale(locale: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     await config.update("locale", locale, vscode.ConfigurationTarget.Global);
     i18n.setLocale(this._configService.getResolvedLocale());
     await this.sendConfigState();
@@ -567,7 +567,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Handle enable/disable sync toggle
    */
   private async handleToggleSyncEnabled(enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     await config.update("enabled", enabled, vscode.ConfigurationTarget.Global);
 
     // Notify user
@@ -780,7 +780,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    * Handle set auto-start setting from webview
    */
   private async handleSetAutoStart(enabled: boolean): Promise<void> {
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     await config.update(
       "autoStartRetry",
       enabled,
@@ -797,7 +797,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
    */
   private sendAutoStartSetting(): void {
     if (!this._view) return;
-    const config = vscode.workspace.getConfiguration("antigravitySync");
+    const config = vscode.workspace.getConfiguration("aiContextSync");
     const enabled = config.get("autoStartRetry", false);
     this._view.webview.postMessage({
       type: "autoStartSetting",
@@ -889,7 +889,7 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src https://microsoft.github.io; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
     <link href="${styleUri}" rel="stylesheet">
-    <title>Antigravity Sync</title>
+    <title>AI Context Sync</title>
 </head>
 <body>
     <div id="app"></div>

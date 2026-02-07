@@ -24,38 +24,38 @@ const STATE_CONFIGS: Record<SyncState, StateConfig> = {
   [SyncState.Synced]: {
     icon: '$(check)',
     text: 'Synced',
-    tooltip: 'Antigravity Sync: All changes synced'
+    tooltip: 'AI Context Sync: All changes synced'
   },
   [SyncState.Syncing]: {
     icon: '$(sync~spin)',
     text: 'Syncing...',
-    tooltip: 'Antigravity Sync: Syncing changes...'
+    tooltip: 'AI Context Sync: Syncing changes...'
   },
   [SyncState.Pushing]: {
     icon: '$(cloud-upload)',
     text: 'Pushing...',
-    tooltip: 'Antigravity Sync: Pushing changes to remote...'
+    tooltip: 'AI Context Sync: Pushing changes to remote...'
   },
   [SyncState.Pulling]: {
     icon: '$(cloud-download)',
     text: 'Pulling...',
-    tooltip: 'Antigravity Sync: Pulling changes from remote...'
+    tooltip: 'AI Context Sync: Pulling changes from remote...'
   },
   [SyncState.Pending]: {
     icon: '$(circle-outline)',
     text: 'Pending',
-    tooltip: 'Antigravity Sync: Changes pending - click to push'
+    tooltip: 'AI Context Sync: Changes pending - click to push'
   },
   [SyncState.Error]: {
     icon: '$(error)',
     text: 'Error',
-    tooltip: 'Antigravity Sync: Sync error - click to retry',
+    tooltip: 'AI Context Sync: Sync error - click to retry',
     color: new vscode.ThemeColor('errorForeground')
   },
   [SyncState.NotConfigured]: {
     icon: '$(gear)',
     text: 'Configure',
-    tooltip: 'Antigravity Sync: Click to configure'
+    tooltip: 'AI Context Sync: Click to configure'
   }
 };
 
@@ -68,7 +68,7 @@ export class StatusBarService {
       vscode.StatusBarAlignment.Right,
       100
     );
-    this.statusBarItem.command = 'antigravitySync.syncNow';
+    this.statusBarItem.command = 'aiContextSync.syncNow';
     this.update(SyncState.NotConfigured);
   }
 
@@ -85,11 +85,11 @@ export class StatusBarService {
 
     // Change command based on state
     if (state === SyncState.NotConfigured) {
-      this.statusBarItem.command = 'antigravitySync.configure';
+      this.statusBarItem.command = 'aiContextSync.configure';
     } else if (state === SyncState.Error) {
-      this.statusBarItem.command = 'antigravitySync.syncNow';
+      this.statusBarItem.command = 'aiContextSync.syncNow';
     } else {
-      this.statusBarItem.command = 'antigravitySync.showStatus';
+      this.statusBarItem.command = 'aiContextSync.showStatus';
     }
   }
 
@@ -103,9 +103,9 @@ export class StatusBarService {
       : errorMessage;
 
     this.statusBarItem.text = `$(error) ${shortMessage}`;
-    this.statusBarItem.tooltip = `Antigravity Sync Error: ${errorMessage}\n\nClick to retry`;
+    this.statusBarItem.tooltip = `AI Context Sync Error: ${errorMessage}\n\nClick to retry`;
     this.statusBarItem.color = new vscode.ThemeColor('errorForeground');
-    this.statusBarItem.command = 'antigravitySync.syncNow';
+    this.statusBarItem.command = 'aiContextSync.syncNow';
   }
 
   /**

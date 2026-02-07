@@ -43,7 +43,7 @@ export class CDPHandler {
   private portRange: number;
 
   constructor() {
-    const config = vscode.workspace.getConfiguration('antigravitySync');
+    const config = vscode.workspace.getConfiguration('aiContextSync');
     this.basePort = config.get('cdpPort', DEFAULT_PORT);
     this.portRange = config.get('cdpPortRange', PORT_RANGE);
   }

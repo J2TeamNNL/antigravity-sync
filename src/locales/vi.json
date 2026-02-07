@@ -1,5 +1,5 @@
 {
-  "setup.welcome": "Chào mừng đến với Antigravity Sync",
+  "setup.welcome": "Chào mừng đến với AI Context Sync",
   "setup.description": "Đồng bộ cài đặt và artifacts của AI agent qua các máy thông qua Git repository riêng tư",
   "setup.continue": "Tiếp tục",
   "setup.enterPAT": "Nhập Git access token của bạn",
@@ -11,7 +11,7 @@
   "setup.validating": "Đang xác thực repository...",
   "setup.checking": "Đang kiểm tra repository...",
   "setup.initializing": "Đang khởi tạo đồng bộ...",
-  "setup.success": "Cấu hình Antigravity Sync thành công! 🎉",
+  "setup.success": "Cấu hình AI Context Sync thành công! 🎉",
   "setup.successDescription": "Context của bạn sẽ được đồng bộ tự động.",
   "setup.openPanel": "Mở Panel",
   "setup.later": "Để sau",

@@ -106,7 +106,7 @@ export class LocalizationService {
       this.loadTranslations();
 
       // Notify that locale changed (for UI updates)
-      vscode.commands.executeCommand("antigravitySync.localeChanged", locale);
+      vscode.commands.executeCommand("aiContextSync.localeChanged", locale);
     }
   }
 
