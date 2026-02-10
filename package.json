@@ -148,11 +148,9 @@
           "type": "string",
           "default": "private",
           "enum": [
-            "private",
-            "project",
-            "both"
+            "private"
           ],
-          "description": "Sync mode: private repo, project repo, or both"
+          "description": "Sync mode: global only"
         },
         "aiContextSync.agentPaths": {
           "type": "object",

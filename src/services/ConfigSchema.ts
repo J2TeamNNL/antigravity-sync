@@ -35,8 +35,8 @@ export const CONFIG_SCHEMA: ConfigSchemaField[] = [
   {
     key: "excludePatterns",
     type: "array",
-    default: [],
-    description: "Global exclude patterns (glob format)",
+    default: ["logs", "tmp", ".cache", "node_modules", ".DS_Store", "skills", "workflows", "agents"],
+    description: "Global exclude patterns (with IDE scaffolding defaults)",
   },
   {
     key: "geminiPath",
@@ -54,9 +54,8 @@ export const CONFIG_SCHEMA: ConfigSchemaField[] = [
     key: "syncMode",
     type: "string",
     default: "private",
-    enum: ["private", "project", "both"],
-    description:
-      "Chế độ sync: private (global data), project (workspace), hoặc both",
+    enum: ["private"],
+    description: "Chế độ sync: global only",
   },
   {
     key: "agentPaths",

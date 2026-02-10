@@ -7,7 +7,6 @@ import { SyncService } from "../services/SyncService";
 import { ConfigService } from "../services/ConfigService";
 import { NotificationService } from "../services/NotificationService";
 import { GitService } from "../services/GitService";
-import { ProjectSyncService } from "../services/ProjectSyncService";
 import { getAllProviders } from "../providers";
 import { i18n } from "../services/LocalizationService";
 
@@ -18,7 +17,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
   private readonly _extensionUri: vscode.Uri;
   private readonly _syncService: SyncService;
   private readonly _configService: ConfigService;
-  private readonly _projectSyncService: ProjectSyncService;
 
   constructor(
     extensionUri: vscode.Uri,
@@ -28,7 +26,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     this._extensionUri = extensionUri;
     this._syncService = syncService;
     this._configService = configService;
-    this._projectSyncService = new ProjectSyncService(configService);
   }
 
   public resolveWebviewView(
@@ -75,9 +72,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         case "toggleAgent":
           await this.handleToggleAgent(message.agentId, message.enabled);
           break;
-        case "setSyncMode":
-          await this.handleSetSyncMode(message.mode);
-          break;
         case "toggleSyncEnabled":
           await this.handleToggleSyncEnabled(message.enabled);
           break;
@@ -87,9 +81,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         case "getGitStatus":
           // Just refresh status (git fetch + check) - no file copy needed
           await this.sendGitStatus();
-          break;
-        case "refreshProjectStatus":
-          await this.sendProjectStatus();
           break;
       }
     });
@@ -119,8 +110,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         : true,
     }));
 
-    const projectStatus = await this._projectSyncService.getStatus();
-
     this._view.webview.postMessage({
       type: "configured",
       data: {
@@ -131,7 +120,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
         enabledAgents,
         agents,
         locale: this._configService.getLocaleSetting(),
-        projectStatus,
         strings: this.getUiStrings(),
       },
     });
@@ -414,9 +402,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       this.updateStatus("synced");
       this.sendLog("Sync complete", "success");
       await this.sendGitStatus();
-      if (this._configService.isProjectModeEnabled()) {
-        await this.sendProjectStatus();
-      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.updateStatus("error");
@@ -441,9 +426,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       this.updateStatus("synced");
       this.sendLog("Push complete", "success");
       await this.sendGitStatus();
-      if (this._configService.isProjectModeEnabled()) {
-        await this.sendProjectStatus();
-      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.updateStatus("error");
@@ -468,9 +450,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       this.updateStatus("synced");
       this.sendLog("Pull complete", "success");
       await this.sendGitStatus();
-      if (this._configService.isProjectModeEnabled()) {
-        await this.sendProjectStatus();
-      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.updateStatus("error");
@@ -576,27 +555,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     await this.sendConfigState();
   }
 
-  private async handleSetSyncMode(mode: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration("aiContextSync");
-    await config.update("syncMode", mode, vscode.ConfigurationTarget.Global);
-
-    if (this._configService.isPrivateModeEnabled()) {
-      const privateConfigured = await this._configService.isPrivateConfigured();
-      if (privateConfigured) {
-        try {
-          await this._syncService.initialize();
-        } catch {
-          // Ignore initialization errors; UI will surface status
-        }
-        this._syncService.startAutoSync();
-      }
-    } else {
-      this._syncService.stopAutoSync();
-    }
-
-    await this.sendConfigState();
-  }
-
   /**
    * Handle enable/disable sync toggle
    */
@@ -654,20 +612,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async sendProjectStatus(): Promise<void> {
-    if (!this._view) return;
-
-    try {
-      const status = await this._projectSyncService.getStatus();
-      this._view.webview.postMessage({
-        type: "projectStatus",
-        data: status,
-      });
-    } catch {
-      // Ignore errors
-    }
-  }
-
   /**
    * Show error in webview
    */
@@ -691,8 +635,6 @@ export class SidePanelProvider implements vscode.WebviewViewProvider {
       "panel.mode.title": i18n.t("panel.mode.title"),
       "panel.mode.desc": i18n.t("panel.mode.desc"),
       "panel.mode.private": i18n.t("mode.privateRepo"),
-      "panel.mode.project": i18n.t("mode.projectRepo"),
-      "panel.mode.both": i18n.t("mode.both"),
 
       "panel.agents.title": i18n.t("panel.agents.title"),
       "panel.agents.desc": i18n.t("panel.agents.desc"),

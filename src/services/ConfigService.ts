@@ -52,14 +52,23 @@ export class ConfigService {
       repositoryUrl: config.get<string>("repositoryUrl", ""),
       autoSync: config.get<boolean>("autoSync", true),
       syncIntervalMinutes: config.get<number>("syncIntervalMinutes", 5),
-      excludePatterns: config.get<string[]>("excludePatterns", []),
+      excludePatterns: config.get<string[]>("excludePatterns", [
+        "logs",
+        "tmp",
+        ".cache",
+        "node_modules",
+        ".DS_Store",
+        "skills",
+        "workflows",
+        "agents",
+      ]),
       geminiPath:
         config.get<string>("geminiPath", "") || this.getDefaultGeminiPath(),
       enabledAgents: this.normalizeEnabledAgents(
         config.get<AgentId[]>("enabledAgents", ["antigravity"]),
       ),
-      syncMode: config.get<SyncMode>("syncMode", "private"),
-      locale: config.get<string>("locale", "auto"),
+      syncMode: "private" as SyncMode,
+      locale: "auto",
       agentPaths: config.get<AgentPathSettings>("agentPaths", {}),
       agentExcludePatterns: config.get<AgentExcludePatterns>(
         "agentExcludePatterns",
@@ -101,30 +110,28 @@ export class ConfigService {
    * Check if private repo mode is enabled
    */
   isPrivateModeEnabled(): boolean {
-    const mode = this.getSyncMode();
-    return mode === "private" || mode === "both";
+    return true;
   }
 
   /**
    * Check if project repo mode is enabled
    */
   isProjectModeEnabled(): boolean {
-    const mode = this.getSyncMode();
-    return mode === "project" || mode === "both";
+    return false;
   }
 
   /**
    * Get sync mode
    */
   getSyncMode(): SyncMode {
-    return this.getConfig().syncMode;
+    return "private";
   }
 
   /**
    * Get locale setting (auto/en/vi)
    */
   getLocaleSetting(): string {
-    return this.getConfig().locale;
+    return "auto";
   }
 
   /**

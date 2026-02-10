@@ -86,6 +86,9 @@ export class SyncService {
     // Copy initial files
     await this.copyFilesToSyncRepo();
 
+    // Ensure minimal project scaffolding in current workspace (non-synced helper)
+    await this.ensureWorkspaceScaffolding();
+
     // Status is Pending until first push
     this.statusBar.update(SyncState.Pending);
   }
@@ -95,6 +98,27 @@ export class SyncService {
    */
   private getLockFilePath(): string {
     return path.join(this.configService.getSyncRepoPath(), ".sync.lock");
+  }
+
+  /**
+   * Create minimal project folders if a workspace is open (for IDEs that expect them)
+   * This does not sync project content; it's just a local scaffold.
+   */
+  private async ensureWorkspaceScaffolding(): Promise<void> {
+    const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspace) return;
+
+    const required = ["skills", "workflows", "agents"];
+    for (const folder of required) {
+      const full = path.join(workspace, folder);
+      if (!fs.existsSync(full)) {
+        try {
+          fs.mkdirSync(full, { recursive: true });
+        } catch (err) {
+          console.warn(`[SyncService] Cannot create scaffold ${full}: ${(err as Error).message}`);
+        }
+      }
+    }
   }
 
   private detectLegacyAntigravityLayout(syncRepoPath: string): boolean {

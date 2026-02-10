@@ -21,7 +21,7 @@ provideVSCodeDesignSystem().register(
   vsCodeOption()
 );
 
-import { MainPanel, showConfigured, updateStatus, showError, showConfigError, appendLog, clearLog, updateGitStatus, updateCountdown, updateProjectStatus } from './panels/MainPanel';
+import { MainPanel, showConfigured, updateStatus, showError, showConfigError, appendLog, clearLog, updateGitStatus, updateCountdown } from './panels/MainPanel';
 
 // Declare vscode API type
 interface VsCodeApi {
@@ -52,27 +52,17 @@ interface AgentMeta {
   hasProject: boolean;
 }
 
-interface ProjectStatus {
-  hasWorkspace: boolean;
-  isGitRepo: boolean;
-  rootPath?: string;
-  files: string[];
-  totalFiles: number;
-  message?: string;
-}
-
 interface ConfiguredMessage {
   type: 'configured';
   data: {
     configured: boolean;
     privateConfigured: boolean;
     repoUrl?: string;
-    syncMode: 'private' | 'project' | 'both';
+    syncMode: 'private';
     enabledAgents: string[];
     agents: AgentMeta[];
     locale: string;
     strings: Record<string, string>;
-    projectStatus?: ProjectStatus;
   };
 }
 
@@ -106,17 +96,12 @@ interface GitStatusMessage {
   data: { ahead: number; behind: number; files: string[]; totalFiles: number; syncRepoPath: string };
 }
 
-interface ProjectStatusMessage {
-  type: 'projectStatus';
-  data: ProjectStatus;
-}
-
 interface CountdownMessage {
   type: 'countdown';
   data: { seconds: number };
 }
 
-type ExtensionMessage = ConfiguredMessage | StatusMessage | ErrorMessage | ConfigErrorMessage | LogMessage | ClearLogMessage | GitStatusMessage | ProjectStatusMessage | CountdownMessage;
+type ExtensionMessage = ConfiguredMessage | StatusMessage | ErrorMessage | ConfigErrorMessage | LogMessage | ClearLogMessage | GitStatusMessage | CountdownMessage;
 
 window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
   const message = event.data;
@@ -142,9 +127,6 @@ window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
       break;
     case 'gitStatus':
       updateGitStatus(message.data);
-      break;
-    case 'projectStatus':
-      updateProjectStatus(message.data);
       break;
     case 'countdown':
       updateCountdown(message.data.seconds);

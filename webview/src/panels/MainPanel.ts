@@ -23,17 +23,13 @@ export class MainPanel {
   render(): void {
     this.container.innerHTML = `
       <div class="main-panel">
-        <section id="mode-section" class="mode-section">
+        <section id="mode-section" class="mode-section" style="display:none">
           <div class="section-header">
             <span class="codicon codicon-sync"></span>
             <h3 id="mode-title">Sync Mode</h3>
           </div>
-          <p class="description" id="mode-desc">Choose how you want to sync.</p>
-          <vscode-dropdown id="sync-mode-select" class="full-width">
-            <vscode-option value="private" id="sync-mode-private">Private</vscode-option>
-            <vscode-option value="project" id="sync-mode-project">Project</vscode-option>
-            <vscode-option value="both" id="sync-mode-both">Both</vscode-option>
-          </vscode-dropdown>
+          <p class="description" id="mode-desc">Global sync enabled</p>
+          <div id="sync-mode-select" style="display:none"></div>
         </section>
 
         <section id="locale-section" class="locale-section">
@@ -44,17 +40,6 @@ export class MainPanel {
           <div style="display:none" id="locale-select"></div>
         </section>
 
-        <section id="agents-section" class="agents-section">
-          <div class="section-header">
-            <span class="codicon codicon-folder"></span>
-            <h3 id="agents-title">Agents</h3>
-          </div>
-          <p class="description" id="agents-desc">Enable agents and choose global or project paths.</p>
-          <div id="agent-list" class="agent-list"></div>
-        </section>
-
-        <vscode-divider></vscode-divider>
-
         <section id="config-section" class="config-section">
           <div class="section-header">
             <span class="codicon codicon-gear"></span>
@@ -63,17 +48,39 @@ export class MainPanel {
           
           <p class="description" id="config-desc">Sync your AI context to a private Git repository.</p>
           
+          <div class="wizard-step">
+            <div class="wizard-badge">Step 1</div>
+            <div class="wizard-title">Enter access token</div>
+          </div>
           <div class="form-group">
             <label for="pat-input" id="pat-label">Access Token</label>
             <vscode-text-field id="pat-input" type="password" placeholder="GitHub/GitLab PAT with repo scope" class="full-width"></vscode-text-field>
             <span class="hint" id="pat-hint">Token needs repository read/write access</span>
           </div>
 
+          <div class="wizard-step">
+            <div class="wizard-badge">Step 2</div>
+            <div class="wizard-title">Repo (optional)</div>
+          </div>
           <div class="form-group">
             <label for="repo-path-input" id="repo-url-label">Repository (optional)</label>
             <vscode-text-field id="repo-path-input" placeholder="owner/name (default: &lt;you&gt;/ai-context-sync)" class="full-width"></vscode-text-field>
           </div>
           
+          <div class="wizard-step">
+            <div class="wizard-badge">Step 3</div>
+            <div class="wizard-title">Confirm & sync</div>
+          </div>
+
+          <section id="agents-section" class="agents-section">
+            <div class="section-header">
+              <span class="codicon codicon-folder"></span>
+              <h3 id="agents-title">Agents</h3>
+            </div>
+            <p class="description" id="agents-desc">Select agents to sync (global only).</p>
+            <div id="agent-list" class="agent-list"></div>
+          </section>
+
           <vscode-button id="btn-save-config" class="full-width" style="display: flex; justify-content: center; text-align: center;">
             <span id="btn-connect-text" style="width: 100%; text-align: center;">Connect Repository</span>
             <span id="btn-connect-spinner" class="codicon codicon-sync codicon-modifier-spin" style="display: none;"></span>
@@ -182,25 +189,6 @@ export class MainPanel {
           </div>
         </section>
 
-        <!-- Project Status -->
-        <section id="project-status-section" class="project-status-section" style="display: none;">
-          <vscode-divider></vscode-divider>
-          <div class="section-header">
-            <span class="codicon codicon-repo"></span>
-            <span class="section-title" id="project-title">Project Sync</span>
-            <vscode-button appearance="icon" id="btn-refresh-project" title="Refresh">
-              <span class="codicon codicon-sync"></span>
-            </vscode-button>
-          </div>
-          <p class="description" id="project-desc">Manual mode: shows changes inside project paths.</p>
-          <div class="project-status-content" id="project-status-content">
-            <div class="git-files" id="project-files">
-              <div class="git-files-empty" id="project-files-empty">No changes detected</div>
-            </div>
-            <div class="git-hint" id="project-meta"></div>
-          </div>
-        </section>
-
         <!-- Error Display -->
         <div id="global-error" class="global-error" style="display: none;">
           <span class="codicon codicon-error"></span>
@@ -243,14 +231,6 @@ export class MainPanel {
     });
 
     // Sync mode dropdown
-    document.getElementById('sync-mode-select')?.addEventListener('change', (e) => {
-      const target = e.target as HTMLSelectElement;
-      vscode.postMessage({
-        type: 'setSyncMode',
-        mode: target.value
-      });
-    });
-
     // Push button
     document.getElementById('btn-push')?.addEventListener('click', () => {
       vscode.postMessage({ type: 'push' });
@@ -317,51 +297,33 @@ export function showConfigured(data: {
   configured: boolean;
   privateConfigured: boolean;
   repoUrl?: string;
-  syncMode: 'private' | 'project' | 'both';
+  syncMode: 'private';
   enabledAgents: string[];
   agents: { id: string; name: string; hasGlobal: boolean; hasProject: boolean }[];
   locale: string;
   strings: Record<string, string>;
-  projectStatus?: {
-    hasWorkspace: boolean;
-    isGitRepo: boolean;
-    rootPath?: string;
-    files: string[];
-    totalFiles: number;
-    message?: string;
-  };
 }): void {
   const configSection = document.getElementById('config-section');
   const dashboardSection = document.getElementById('dashboard-section');
-  const projectSection = document.getElementById('project-status-section');
   const repoDisplay = document.getElementById('repo-display');
 
   // Reset loading state
   setConnectLoading(false);
 
   updateStrings(data.strings);
-  updateSyncModeSelect(data.syncMode, data.projectStatus);
+  updateSyncModeSelect(data.syncMode);
   renderAgentList(data.agents, data.enabledAgents);
 
   if (configSection) {
-    const showConfig = (data.syncMode === 'private' || data.syncMode === 'both') && !data.privateConfigured;
+    const showConfig = !data.privateConfigured;
     configSection.style.display = showConfig ? 'block' : 'none';
   }
-
   if (dashboardSection) {
     dashboardSection.style.display = data.privateConfigured ? 'block' : 'none';
   }
 
-  if (projectSection) {
-    projectSection.style.display = (data.syncMode === 'project' || data.syncMode === 'both') ? 'block' : 'none';
-  }
-
   if (repoDisplay && data.repoUrl) {
     repoDisplay.textContent = data.repoUrl;
-  }
-
-  if (data.projectStatus) {
-    updateProjectStatus(data.projectStatus);
   }
 }
 
@@ -379,13 +341,10 @@ function applyStrings(): void {
   };
 
   setText('mode-title', t('panel.mode.title', 'Sync Mode'));
-  setText('mode-desc', t('panel.mode.desc', 'Choose how you want to sync.'));
-  setText('sync-mode-private', t('panel.mode.private', 'Private'));
-  setText('sync-mode-project', t('panel.mode.project', 'Project'));
-  setText('sync-mode-both', t('panel.mode.both', 'Both'));
+  setText('mode-desc', t('panel.mode.desc', 'Global sync is enabled.'));
 
   setText('agents-title', t('panel.agents.title', 'Agents'));
-  setText('agents-desc', t('panel.agents.desc', 'Enable agents and choose global or project paths.'));
+  setText('agents-desc', t('panel.agents.desc', 'Select agents to sync (global only).'));
 
   setText('config-title', t('panel.config.title', 'Setup'));
   setText('config-desc', t('panel.config.desc', 'Sync your AI context to a private Git repository.'));
@@ -413,24 +372,9 @@ function applyStrings(): void {
   setText('project-files-empty', t('panel.project.empty', 'No changes detected'));
 }
 
-function updateSyncModeSelect(
-  mode: 'private' | 'project' | 'both',
-  projectStatus?: { hasWorkspace: boolean; isGitRepo: boolean },
-): void {
+function updateSyncModeSelect(mode: 'private'): void {
   const select = document.getElementById('sync-mode-select') as HTMLSelectElement;
-  if (select) {
-    select.value = mode;
-    const projectOption = select.querySelector('#sync-mode-project') as HTMLOptionElement;
-    if (projectOption && projectStatus) {
-      const disabled = !projectStatus.hasWorkspace || !projectStatus.isGitRepo;
-      projectOption.disabled = disabled;
-      projectOption.title = disabled ? 'Open a Git workspace to enable project sync' : '';
-      if (disabled && select.value === 'project') {
-        select.value = 'private';
-        vscode.postMessage({ type: 'setSyncMode', mode: 'private' });
-      }
-    }
-  }
+  if (select) select.value = mode;
 }
 
 function renderAgentList(
@@ -639,49 +583,6 @@ export function updateGitStatus(data: {
       filesEl.innerHTML = html;
     }
   }
-}
-
-export function updateProjectStatus(data: {
-  hasWorkspace: boolean;
-  isGitRepo: boolean;
-  rootPath?: string;
-  files: string[];
-  totalFiles: number;
-  message?: string;
-}): void {
-  const filesEl = document.getElementById('project-files');
-  const emptyEl = document.getElementById('project-files-empty');
-  const metaEl = document.getElementById('project-meta');
-
-  if (!filesEl || !emptyEl || !metaEl) return;
-
-  let emptyMessage = t('panel.project.empty', 'No changes detected');
-  if (!data.hasWorkspace) {
-    emptyMessage = t('panel.project.noWorkspace', 'No workspace open.');
-  } else if (data.message && data.message.toLowerCase().includes('no project paths')) {
-    emptyMessage = t('panel.project.noPaths', 'No project paths enabled.');
-  } else if (!data.isGitRepo) {
-    emptyMessage = t('panel.project.notGit', 'Workspace is not a Git repository.');
-  }
-
-  if (data.files.length === 0) {
-    filesEl.innerHTML = `<div class="git-files-empty" id="project-files-empty">${emptyMessage}</div>`;
-    metaEl.textContent = data.rootPath ? data.rootPath : '';
-    return;
-  }
-
-  let html = '<div class="git-files-list">';
-  data.files.forEach(file => {
-    html += `<div class="git-file-item">${file}</div>`;
-  });
-  if (data.totalFiles > data.files.length) {
-    const moreCount = data.totalFiles - data.files.length;
-    const moreText = t('panel.gitStatus.more', '...and {0} more').replace('{0}', String(moreCount));
-    html += `<div class="git-file-more">${moreText}</div>`;
-  }
-  html += '</div>';
-  filesEl.innerHTML = html;
-  metaEl.textContent = `${data.totalFiles} ${t('panel.project.files', 'files')}`;
 }
 
 export function setRefreshLoading(loading: boolean): void {
